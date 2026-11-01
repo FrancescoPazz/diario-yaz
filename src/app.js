@@ -119,6 +119,10 @@ async function askPermission() {
   render();
 }
 
+// Con isExactNotification a true (predefinito) il plugin apre la pagina "Sveglie e promemoria" a ogni schedule()
+// finché il permesso manca: lo si chiede solo se c'è già. Per concederlo c'è "Consenti" nelle Impostazioni dell'app.
+const exact = () => notif.exact === 'granted';
+
 let schedQueue = Promise.resolve();
 function reschedule() {
   schedQueue = schedQueue.then(doReschedule).catch(() => {});
@@ -138,7 +142,7 @@ async function doReschedule() {
   if (!list.length) return;
   await LocalNotifications.schedule({ notifications: list.map(({ p, at }) => ({
     id: p.id, title: p.title, body: p.body, largeBody: p.body,
-    channelId: CHANNEL, actionTypeId: p.actionTypeId, smallIcon: 'ic_stat_notify', iconColor: '#A92D58',
+    channelId: CHANNEL, actionTypeId: p.actionTypeId, smallIcon: 'ic_stat_notify', iconColor: '#A92D58', isExactNotification: exact(),
     extra: { kind: p.kind, date: n2d(p.n), blisterStart: p.blisterStart },
     schedule: { at, allowWhileIdle: true },
   })) });
@@ -214,7 +218,7 @@ const actions = {
   async testNotif() {
     if (notif.display !== 'granted') return askPermission();
     try {
-      await LocalNotifications.schedule({ notifications: [{ id: 999999, title: 'Diario Yaz', body: 'Le notifiche funzionano. I promemoria arriveranno alle ' + state.settings.time + '.', channelId: CHANNEL, smallIcon: 'ic_stat_notify', iconColor: '#A92D58', schedule: { at: new Date(Date.now() + 5000), allowWhileIdle: true } }] });
+      await LocalNotifications.schedule({ notifications: [{ id: 999999, title: 'Diario Yaz', body: 'Le notifiche funzionano. I promemoria arriveranno alle ' + state.settings.time + '.', channelId: CHANNEL, smallIcon: 'ic_stat_notify', iconColor: '#A92D58', isExactNotification: exact(), schedule: { at: new Date(Date.now() + 5000), allowWhileIdle: true } }] });
       toast('Notifica di prova tra 5 secondi.');
     } catch (e) { showErr('Non riesco a inviare la notifica di prova.'); }
   },
