@@ -3,12 +3,15 @@
   "appName": "Diario Yaz",
   "webDir": "www",
   "android": {
-    "backgroundColor": "#F5F4F8"
+    "backgroundColor": "#FFF8F7"
   },
   "plugins": {
     "LocalNotifications": {
       "smallIcon": "ic_stat_notify",
       "iconColor": "#A92D58"
+    },
+    "SystemBars": {
+      "initialViewportFitValueHint": "cover"
     }
   }
 }
