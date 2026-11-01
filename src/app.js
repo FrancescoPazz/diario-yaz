@@ -4,6 +4,7 @@ import { Preferences } from '@capacitor/preferences';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { App } from '@capacitor/app';
 import { DAY, d2n, n2d, localToday, compute, buildMap, planNotifications, applyAnswer, parseBackup, nextRx, shiftRx } from './logic.js';
+import { strings, pickLang } from './i18n.js';
 
 // Material Symbols (stile rounded): esbuild li include come testo SVG
 import today from '@material-symbols/svg-400/rounded/today.svg';
@@ -27,6 +28,7 @@ import notifications from '@material-symbols/svg-400/rounded/notifications.svg';
 import notificationsOff from '@material-symbols/svg-400/rounded/notifications_off.svg';
 import alarm from '@material-symbols/svg-400/rounded/alarm.svg';
 import backup from '@material-symbols/svg-400/rounded/settings_backup_restore.svg';
+import translate from '@material-symbols/svg-400/rounded/translate.svg';
 import checkCircle from '@material-symbols/svg-400/rounded/check_circle.svg';
 import skipNext from '@material-symbols/svg-400/rounded/skip_next.svg';
 import del from '@material-symbols/svg-400/rounded/delete.svg';
@@ -36,25 +38,22 @@ import contentCopy from '@material-symbols/svg-400/rounded/content_copy.svg';
 import contentPaste from '@material-symbols/svg-400/rounded/content_paste.svg';
 
 const ICONS = { today, todayFill, calendarMonth, calendarMonthFill, history, historyFill, settings, settingsFill, chevronLeft, chevronRight,
-  waterDrop, pill, prescriptions, eventRepeat, eventBusy, snooze, schedule, notifications, notificationsOff, alarm, backup,
+  waterDrop, pill, prescriptions, eventRepeat, eventBusy, snooze, schedule, notifications, notificationsOff, alarm, backup, translate,
   checkCircle, skipNext, del, add, check, contentCopy, contentPaste };
 const icon = name => ICONS[name].replace('<svg', '<svg class="i" aria-hidden="true" focusable="false"');
 
 const NATIVE = Capacitor.isNativePlatform();
 const STORE_KEY = 'diario-yaz';
 const CHANNEL = 'promemoria';
-const EMPTY = () => ({ blisters: [], lastNo: null, settings: { time: '09:00' } });
-const TABS = [['oggi', 'Oggi', 'today'], ['calendario', 'Calendario', 'calendarMonth'], ['storico', 'Storico', 'history'], ['impostazioni', 'Impostazioni', 'settings']];
+const EMPTY = () => ({ blisters: [], lastNo: null, settings: { time: '09:00', rx: null, lang: 'auto' } });
+const TABS = [['oggi', 'today'], ['calendario', 'calendarMonth'], ['storico', 'history'], ['impostazioni', 'settings']];
 
 let state = null;
+let T = strings(pickLang('auto', navigator.language));
 let ui = { tab: 'oggi', month: null, pickDate: false, dialog: null, delStart: null };
 let shownTab = null;
 let notif = { display: 'unknown', exact: 'unknown' };
 
-/* ---------- utilità di formato ---------- */
-const fmt = (n, o = { weekday: 'short', day: 'numeric', month: 'short' }) => new Date(n * DAY).toLocaleDateString('it-IT', { ...o, timeZone: 'UTC' });
-const fmtLong = n => fmt(n, { weekday: 'long', day: 'numeric', month: 'long' });
-const rel = (n, t) => n === t ? 'oggi' : n === t + 1 ? 'domani' : n === t - 1 ? 'ieri' : n > t ? `tra ${n - t} giorni` : `${t - n} giorni fa`;
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const $ = id => document.getElementById(id);
 
@@ -66,15 +65,21 @@ function toast(msg) {
   clearTimeout(toastTimer); toastTimer = setTimeout(() => { e.hidden = true; }, 4500);
 }
 
+function applyLang() {
+  T = strings(pickLang(state.settings.lang, navigator.language));
+  document.documentElement.lang = T.lang;
+  buildNav();
+}
+
 /* ---------- salvataggio sul dispositivo ---------- */
 async function load() {
   try {
     const { value } = await Preferences.get({ key: STORE_KEY });
     if (!value) return EMPTY();
-    const d = JSON.parse(value);
-    return { blisters: Array.isArray(d.blisters) ? d.blisters : [], lastNo: d.lastNo || null, settings: { time: (d.settings && d.settings.time) || '09:00', rx: (d.settings && d.settings.rx) || null } };
+    const d = JSON.parse(value), s = d.settings || {};
+    return { blisters: Array.isArray(d.blisters) ? d.blisters : [], lastNo: d.lastNo || null, settings: { time: s.time || '09:00', rx: s.rx || null, lang: s.lang || 'auto' } };
   } catch (e) {
-    showErr('Non riesco a leggere i dati salvati. Se hai un backup puoi reimportarlo.');
+    showErr(T.err.load);
     return EMPTY();
   }
 }
@@ -87,21 +92,27 @@ function persist() {
   saveQueue = saveQueue
     .then(() => Preferences.set({ key: STORE_KEY, value: snap }))
     .then(() => showErr(''))
-    .catch(() => showErr('Salvataggio non riuscito. Riprova.'))
+    .catch(() => showErr(T.err.save))
     .then(() => reschedule());
 }
 
 /* ---------- promemoria (notifiche locali) ---------- */
-async function setupNotifications() {
+// Canale e pulsanti delle notifiche portano testi: si registrano di nuovo quando cambia la lingua.
+async function registerNotificationTexts() {
   if (!NATIVE) return;
   try {
-    await LocalNotifications.createChannel({ id: CHANNEL, name: 'Promemoria pillola', description: 'Inizio blister, giorno 25, ciclo previsto e ricetta', importance: 4, visibility: 1, vibration: true });
+    await LocalNotifications.createChannel({ id: CHANNEL, name: T.channelName, description: T.channelDesc, importance: 4, visibility: 1, vibration: true });
     await LocalNotifications.registerActionTypes({ types: [
-      { id: 'PLACEBO', actions: [{ id: 'placebo', title: 'Placebo' }, { id: 'skip', title: 'Blister nuovo' }] },
-      { id: 'BLISTER', actions: [{ id: 'yes', title: 'Sì' }, { id: 'no', title: 'No' }] },
+      { id: 'PLACEBO', actions: [{ id: 'placebo', title: T.btnPlacebo }, { id: 'skip', title: T.btnNewPack }] },
+      { id: 'BLISTER', actions: [{ id: 'yes', title: T.yes }, { id: 'no', title: T.no }] },
     ] });
-    await LocalNotifications.addListener('localNotificationActionPerformed', onNotificationAction);
   } catch (e) { /* le notifiche restano disattivate, l'app funziona comunque */ }
+}
+
+async function setupNotifications() {
+  if (!NATIVE) return;
+  await registerNotificationTexts();
+  try { await LocalNotifications.addListener('localNotificationActionPerformed', onNotificationAction); } catch (e) { /* nulla */ }
   await refreshPermissions();
 }
 
@@ -114,7 +125,7 @@ async function refreshPermissions() {
 async function askPermission() {
   if (!NATIVE) return;
   try { notif.display = (await LocalNotifications.requestPermissions()).display; } catch (e) { /* nulla */ }
-  if (notif.display !== 'granted') showErr('Le notifiche sono disattivate. Puoi attivarle da Impostazioni Android › App › Diario Yaz › Notifiche.');
+  if (notif.display !== 'granted') showErr(T.err.notifOff);
   await reschedule();
   render();
 }
@@ -140,31 +151,33 @@ async function doReschedule() {
     return { p, at: new Date(y, mo - 1, d, hh, mm, 0) };
   }).filter(x => x.at.getTime() > now + 15000).slice(0, 60);
   if (!list.length) return;
-  await LocalNotifications.schedule({ notifications: list.map(({ p, at }) => ({
-    id: p.id, title: p.title, body: p.body, largeBody: p.body,
-    channelId: CHANNEL, actionTypeId: p.actionTypeId, smallIcon: 'ic_stat_notify', iconColor: '#A92D58', isExactNotification: exact(),
-    extra: { kind: p.kind, date: n2d(p.n), blisterStart: p.blisterStart },
-    schedule: { at, allowWhileIdle: true },
-  })) });
+  await LocalNotifications.schedule({ notifications: list.map(({ p, at }) => {
+    const [title, body] = T.msg[p.kind](p);
+    return {
+      id: p.id, title, body, largeBody: body,
+      channelId: CHANNEL, actionTypeId: p.actionTypeId, smallIcon: 'ic_stat_notify', iconColor: '#A92D58', isExactNotification: exact(),
+      extra: { kind: p.kind, date: n2d(p.n), blisterStart: p.blisterStart },
+      schedule: { at, allowWhileIdle: true },
+    };
+  }) });
 }
 
-const ANSWER_TEXT = { placebo: 'Registrato: hai cominciato le placebo.', skip: 'Registrato: blister nuovo, questo mese salti il ciclo.', yes: 'Registrato: nuovo blister iniziato.', no: 'Ok, te lo richiedo domani.' };
 function onNotificationAction(ev) {
   const id = ev.actionId, x = (ev.notification && ev.notification.extra) || {};
   ui.tab = 'oggi'; ui.dialog = null;
-  if (!state || !ANSWER_TEXT[id]) { render(); return; }      // semplice tocco sulla notifica: apre l'app sulla domanda
+  if (!state || !T.answered[id]) { render(); return; }      // semplice tocco sulla notifica: apre l'app sulla domanda
   const next = applyAnswer(state, id, x.blisterStart, x.date);
-  if (!next) { toast('Questa domanda ha già una risposta. Controlla il diario qui sotto.'); render(); return; }
+  if (!next) { toast(T.alreadyAnswered); render(); return; }
   next.settings = state.settings;
-  state = next; persist(); toast(ANSWER_TEXT[id]);
+  state = next; persist(); toast(T.answered[id]);
 }
 
 /* ---------- azioni ---------- */
 const lastB = () => state.blisters[state.blisters.length - 1];
 function answer(kind, date) {
   const next = applyAnswer(state, kind, lastB().start, date || localToday());
-  if (!next) return showErr('Non riesco a registrare questa risposta. Controlla le date nello storico.');
-  next.settings = state.settings; state = next; ui.pickDate = false; persist(); toast(ANSWER_TEXT[kind]);
+  if (!next) return showErr(T.err.answer);
+  next.settings = state.settings; state = next; ui.pickDate = false; persist(); toast(T.answered[kind]);
 }
 function setTab(tab) { ui.tab = tab; render(); window.scrollTo(0, 0); }
 function openDialog(name) { ui.dialog = name; render(); }
@@ -174,8 +187,8 @@ const actions = {
   tab(el) { setTab(el.dataset.tab); },
   async setup() {
     const v = $('setup-date').value;
-    if (!v) return showErr('Scegli la data di inizio del blister.');
-    if (d2n(v) > d2n(localToday())) return showErr('La data non può essere nel futuro.');
+    if (!v) return showErr(T.err.setupDate);
+    if (d2n(v) > d2n(localToday())) return showErr(T.err.future);
     state.blisters = [{ start: v, placebo: null }]; state.lastNo = null; ui.tab = 'oggi'; persist();
     if (NATIVE && notif.display !== 'granted') await askPermission();
   },
@@ -186,9 +199,9 @@ const actions = {
   pick() { ui.pickDate = true; render(); },
   pickSave() {
     const v = $('pick-date').value;
-    if (!v) return showErr('Scegli una data.');
-    if (d2n(v) > d2n(localToday())) return showErr('La data non può essere nel futuro.');
-    if (d2n(v) <= d2n(lastB().start) + 23) return showErr('La data deve essere dopo la 24ª compressa attiva del blister precedente.');
+    if (!v) return showErr(T.err.pickDate);
+    if (d2n(v) > d2n(localToday())) return showErr(T.err.future);
+    if (d2n(v) <= d2n(lastB().start) + 23) return showErr(T.err.after24);
     answer('yes', v);
   },
   monthPrev() { ui.month = shiftMonth(ui.month, -1); render(); },
@@ -198,9 +211,9 @@ const actions = {
   addOpen() { openDialog('add'); },
   addSave() {
     const v = $('add-date').value, o = document.querySelector('[name=add-out]:checked').value;
-    if (!v) return showErr('Scegli la data di inizio.');
-    if (state.blisters.some(b => b.start === v)) return showErr('Esiste già un blister iniziato in quella data.');
-    if (d2n(v) > d2n(localToday())) return showErr('La data non può essere nel futuro.');
+    if (!v) return showErr(T.err.addDate);
+    if (state.blisters.some(b => b.start === v)) return showErr(T.err.dup);
+    if (d2n(v) > d2n(localToday())) return showErr(T.err.future);
     state.blisters.push({ start: v, placebo: o === 'placebo' ? true : o === 'skip' ? false : null }); ui.dialog = null; persist();
   },
   del(el) { ui.delStart = el.dataset.start; openDialog('del'); },
@@ -218,25 +231,25 @@ const actions = {
   async testNotif() {
     if (notif.display !== 'granted') return askPermission();
     try {
-      await LocalNotifications.schedule({ notifications: [{ id: 999999, title: 'Diario Yaz', body: 'Le notifiche funzionano. I promemoria arriveranno alle ' + state.settings.time + '.', channelId: CHANNEL, smallIcon: 'ic_stat_notify', iconColor: '#A92D58', isExactNotification: exact(), schedule: { at: new Date(Date.now() + 5000), allowWhileIdle: true } }] });
-      toast('Notifica di prova tra 5 secondi.');
-    } catch (e) { showErr('Non riesco a inviare la notifica di prova.'); }
+      await LocalNotifications.schedule({ notifications: [{ id: 999999, title: 'Diario Yaz', body: T.testBody(state.settings.time), channelId: CHANNEL, smallIcon: 'ic_stat_notify', iconColor: '#A92D58', isExactNotification: exact(), schedule: { at: new Date(Date.now() + 5000), allowWhileIdle: true } }] });
+      toast(T.testIn5);
+    } catch (e) { showErr(T.err.test); }
   },
   backupOpen() { openDialog('backup'); },
   // Dentro la finestra la snackbar non si vedrebbe: la conferma va sul pulsante stesso.
   async copyBackup(el) {
     const ta = $('backup-out');
-    try { await navigator.clipboard.writeText(ta.value); el.innerHTML = icon('check') + 'Copiato'; }
-    catch (e) { ta.focus(); ta.select(); el.textContent = 'Tieni premuto il testo e scegli Copia'; }
+    try { await navigator.clipboard.writeText(ta.value); el.innerHTML = icon('check') + T.copied; }
+    catch (e) { ta.focus(); ta.select(); el.textContent = T.copyManual; }
   },
   importAsk() {
     try { parseBackup($('backup-in').value); $('imp-ask').hidden = true; $('imp-confirm').hidden = false; }
-    catch (e) { showErr(e.message); }
+    catch (e) { showErr(T.backupErr[e.message] || T.backupErr.json); }
   },
   importNo() { $('imp-ask').hidden = false; $('imp-confirm').hidden = true; },
   importYes() {
-    try { state = parseBackup($('backup-in').value); ui.dialog = null; persist(); toast('Dati importati.'); }
-    catch (e) { showErr(e.message); }
+    try { state = parseBackup($('backup-in').value); ui.dialog = null; applyLang(); registerNotificationTexts(); persist(); toast(T.imported); }
+    catch (e) { showErr(T.backupErr[e.message] || T.backupErr.json); }
   },
 };
 function shiftMonth(m, k) { const t = new Date(); let [y, mo] = m || [t.getFullYear(), t.getMonth()]; mo += k; y += Math.floor(mo / 12); mo = ((mo % 12) + 12) % 12; return [y, mo]; }
@@ -247,9 +260,13 @@ document.addEventListener('click', e => {
   e.preventDefault(); showErr('');
   actions[el.dataset.a] && actions[el.dataset.a](el);
 });
-document.addEventListener('change', e => {
+document.addEventListener('change', async e => {
   if (e.target.id === 'notif-time' && /^\d{2}:\d{2}$/.test(e.target.value)) {
-    state.settings.time = e.target.value; persist(); toast('Promemoria alle ' + e.target.value + '.');
+    state.settings.time = e.target.value; persist(); toast(T.remindAt(e.target.value));
+  }
+  if (e.target.id === 'lang') {
+    state.settings.lang = e.target.value; applyLang();
+    await registerNotificationTexts(); persist();     // persist riprogramma le notifiche con i nuovi testi
   }
 });
 document.addEventListener('close', e => { if (e.target.id === 'dlg') ui.dialog = null; }, true);   // chiusa con Esc
@@ -275,13 +292,12 @@ function render() {
 
 const VIEWS = {
   oggi: m => {
-    const head = fmtLong(m.t);
-    return [head, pageHead(head, `Giorno ${Math.max(m.day, 1)} del blister iniziato ${fmt(m.last.s)}`) + askView(m) + skipView(m) + todayView(m) + nextView(m)];
+    const head = T.fmtLong(m.t);
+    return [head, pageHead(head, T.dayOf(Math.max(m.day, 1), T.fmt(m.last.s))) + askView(m) + skipView(m) + todayView(m) + nextView(m)];
   },
-  calendario: m => ['Calendario', pageHead('Calendario') + calendarView(m) + periodsView(m)],
-  storico: () => ['Storico', pageHead('Storico') + historyView()],
-  impostazioni: m => ['Impostazioni', pageHead('Impostazioni') + settingsView(m)
-    + '<p class="note-text">Il ciclo previsto è il giorno della quarta placebo (giorno 28 del blister). Se salti le placebo e inizi subito un nuovo blister, il conteggio riparte da quel giorno e quel mese il ciclo salta. Le previsioni non sostituiscono le indicazioni del medico o del foglietto illustrativo.</p>'],
+  calendario: m => [T.tabs.calendario, pageHead(T.tabs.calendario) + calendarView(m) + periodsView(m)],
+  storico: () => [T.tabs.storico, pageHead(T.tabs.storico) + historyView()],
+  impostazioni: m => [T.tabs.impostazioni, pageHead(T.tabs.impostazioni) + settingsView(m) + `<p class="note-text">${T.note}</p>`],
 };
 
 function pageHead(title, sub) {
@@ -289,22 +305,22 @@ function pageHead(title, sub) {
 }
 
 function buildNav() {
-  $('nav').innerHTML = TABS.map(([id, label, ic]) => `<button class="nav-item" data-a="tab" data-tab="${id}">
+  $('nav').innerHTML = TABS.map(([id, ic]) => `<button class="nav-item" data-a="tab" data-tab="${id}">
     <span class="nav-ind"><span class="off">${icon(ic)}</span><span class="on">${icon(ic + 'Fill')}</span></span>
-    <span class="nav-label label-m">${label}</span></button>`).join('');
+    <span class="nav-label label-m">${T.tabs[id]}</span></button>`).join('');
 }
 
 function setupView() {
   return `<section class="setup">
     <div class="setup-mark">${icon('pill')}</div>
-    <div class="page-head" style="padding:0"><h1 class="headline-l">Diario Yaz</h1><p class="body-l muted">Per il blister da 24 compresse attive e 4 placebo.</p></div>
+    <div class="page-head" style="padding:0"><h1 class="headline-l">Diario Yaz</h1><p class="body-l muted">${T.setupSub}</p></div>
     <div class="card">
-      <h2 class="title-l">Quando hai preso la prima compressa del blister attuale?</h2>
-      <p class="body-m muted">Da questa data calcolo il giorno delle placebo, il prossimo blister e il ciclo previsto.</p>
-      <label class="field"><span>Data della prima compressa</span><input type="date" class="input" id="setup-date" max="${localToday()}"></label>
-      <button class="btn filled m wide" data-a="setup">Inizia il diario</button>
+      <h2 class="title-l">${T.setupQ}</h2>
+      <p class="body-m muted">${T.setupWhy}</p>
+      <label class="field"><span>${T.firstPill}</span><input type="date" class="input" id="setup-date" max="${localToday()}"></label>
+      <button class="btn filled m wide" data-a="setup">${T.start}</button>
     </div>
-    <button class="btn text" data-a="backupOpen">Ho un backup da ripristinare</button>
+    <button class="btn text" data-a="backupOpen">${T.haveBackup}</button>
   </section>`;
 }
 
@@ -312,57 +328,55 @@ function askView(m) {
   const q = m.q; if (!q) return '';
   if (q.type === 'placebo') {
     const late = q.day > 25;
-    return `<section class="card ask" aria-label="Domanda di oggi">
-      <div class="ask-tag label-l">${icon('pill')}${late ? `Giorno 25 · ${fmt(m.last.s + 24)}` : 'Oggi è il giorno 25'}</div>
-      <h2>${late ? 'Il giorno 25 hai cominciato le placebo oppure un nuovo blister?' : 'Oggi cominci a prendere le placebo oppure cominci un nuovo blister?'}</h2>
-      <p>Con le placebo il ciclo è previsto ${fmtLong(m.last.s + 27)}. Con un blister nuovo salti il ciclo di questo mese e il conteggio riparte da ${late ? fmt(m.last.s + 24) : 'oggi'}: il prossimo ciclo sarebbe ${fmtLong(m.last.s + 24 + 27)}.</p>
-      <div class="actions"><button class="btn filled m" data-a="placebo">Placebo</button><button class="btn outlined m" data-a="skip">Blister nuovo</button></div>
+    return `<section class="card ask" aria-label="${T.askLabel}">
+      <div class="ask-tag label-l">${icon('pill')}${late ? T.day25On(T.fmt(m.last.s + 24)) : T.day25Today}</div>
+      <h2>${late ? T.placeboQLate : T.placeboQ}</h2>
+      <p>${T.placeboWhy(T.fmtLong(m.last.s + 27), late ? T.fmt(m.last.s + 24) : null, T.fmtLong(m.last.s + 24 + 27))}</p>
+      <div class="actions"><button class="btn filled m" data-a="placebo">${T.btnPlacebo}</button><button class="btn outlined m" data-a="skip">${T.btnNewPack}</button></div>
     </section>`;
   }
   if (q.type === 'blister') {
-    const extra = q.late > 0 ? `<p>Il nuovo blister era previsto ${fmt(m.nominalNext)} (${q.late === 1 ? '1 giorno fa' : q.late + ' giorni fa'}).</p>` : '';
+    const extra = q.late > 0 ? `<p>${T.packLate(T.fmt(m.nominalNext), T.rel(m.nominalNext, m.t))}</p>` : '';
     const picker = ui.pickDate
-      ? `<div class="row pick"><label class="field"><span>Data di inizio</span><input type="date" class="input" id="pick-date" min="${n2d(m.last.s + 24)}" max="${localToday()}"></label><button class="btn filled m" data-a="pickSave">Salva</button></div>`
-      : '<button class="btn text" data-a="pick">L\'ho iniziato un altro giorno</button>';
-    return `<section class="card ask" aria-label="Domanda di oggi">
-      <div class="ask-tag label-l">${icon('eventRepeat')}Inizio blister</div>
-      <h2>Hai cominciato un nuovo blister oggi?</h2>${extra}
-      <div class="actions"><button class="btn filled m" data-a="yes">Sì</button><button class="btn outlined m" data-a="no">No</button></div>
+      ? `<div class="row pick"><label class="field"><span>${T.startDate}</span><input type="date" class="input" id="pick-date" min="${n2d(m.last.s + 24)}" max="${localToday()}"></label><button class="btn filled m" data-a="pickSave">${T.save}</button></div>`
+      : `<button class="btn text" data-a="pick">${T.otherDay}</button>`;
+    return `<section class="card ask" aria-label="${T.askLabel}">
+      <div class="ask-tag label-l">${icon('eventRepeat')}${T.packStart}</div>
+      <h2>${T.packQ}</h2>${extra}
+      <div class="actions"><button class="btn filled m" data-a="yes">${T.yes}</button><button class="btn outlined m" data-a="no">${T.no}</button></div>
       ${picker}
     </section>`;
   }
   if (q.type === 'snoozed') {
     return `<section class="card notice soft"><span class="av neutral">${icon('snooze')}</span>
-      <p class="body-m grow">Ok, nessun blister nuovo oggi. Te lo richiedo domani.</p>
-      <button class="btn tonal" data-a="yes">L'ho appena iniziato</button></section>`;
+      <p class="body-m grow">${T.snoozed}</p>
+      <button class="btn tonal" data-a="yes">${T.justStarted}</button></section>`;
   }
   return '';
 }
 
 function skipView(m) {
   const s = m.skipNote; if (!s) return '';
-  const head = s.skipped > m.t ? 'Questo mese salti il ciclo'
-    : s.skipped === m.t ? 'Oggi avresti avuto il ciclo: questo mese lo salti'
-      : 'Questo mese hai saltato il ciclo';
+  const head = s.skipped > m.t ? T.skipFuture : s.skipped === m.t ? T.skipToday : T.skipPast;
   return `<section class="card notice" role="status">${icon('eventBusy')}<div>
     <h2 class="title-m">${head}</h2>
-    <p class="body-m">Hai iniziato il blister nuovo ${fmtLong(m.last.s)} al posto della prima placebo, quindi il ciclo previsto ${fmtLong(s.skipped)} non arriva.${s.next ? ` Se questa volta prendi le placebo, il prossimo ciclo è previsto ${fmtLong(s.next.n)}.` : ''}</p>
+    <p class="body-m">${T.skipWhy(T.fmtLong(m.last.s), T.fmtLong(s.skipped), s.next && T.fmtLong(s.next.n))}</p>
   </div></section>`;
 }
 
 function todayView(m) {
   const { phase, last, day } = m;
-  const count = (n, of) => `<div class="count" role="img" aria-label="${n} di ${of}"><span class="display">${n}</span><span class="of">/${of}</span></div>`;
+  const count = (n, of) => `<div class="count" role="img" aria-label="${T.of(n, of)}"><span class="display">${n}</span><span class="of">/${of}</span></div>`;
   let big, title, sub;
   if (phase.kind === 'active') {
-    big = count(phase.pill, 24); title = 'Compressa attiva';
-    sub = phase.pill === 24 ? 'Ultima attiva: domani tocca alle placebo o a un blister nuovo.' : `${24 - phase.pill} attive rimanenti in questo blister.`;
+    big = count(phase.pill, 24); title = T.active;
+    sub = phase.pill === 24 ? T.lastActive : T.activeLeft(24 - phase.pill);
   } else if (phase.kind === 'placebo') {
-    big = count(phase.pill - 24, 4); title = 'Placebo';
-    sub = phase.pill === 28 ? 'Oggi è il giorno previsto del ciclo.' : `Ciclo previsto ${fmtLong(last.s + 27)}.`;
+    big = count(phase.pill - 24, 4); title = T.placebo;
+    sub = phase.pill === 28 ? T.periodToday : T.periodOn(T.fmtLong(last.s + 27));
   } else {
-    big = `<span class="wait">${icon('eventRepeat')}</span>`; title = 'Tra un blister e l\'altro';
-    sub = phase.late > 0 ? `Il nuovo blister era previsto ${fmt(m.nominalNext)}.` : 'Oggi inizia il nuovo blister.';
+    big = `<span class="wait">${icon('eventRepeat')}</span>`; title = T.between;
+    sub = phase.late > 0 ? T.packWas(T.fmt(m.nominalNext)) : T.packToday;
   }
   const pills = Array.from({ length: 28 }, (_, i) => {
     const n = i + 1, isPl = n > 24;
@@ -371,7 +385,7 @@ function todayView(m) {
   }).join('');
   return `<section class="card hero">
     <div class="hero-row">${big}<div><h2 class="title-l">${title}</h2><p class="body-m muted">${sub}</p></div></div>
-    <div class="blister" role="img" aria-label="Blister attuale: 24 compresse attive e 4 placebo, oggi giorno ${Math.max(day, 1)}">${pills}</div>
+    <div class="blister" role="img" aria-label="${T.packAria(Math.max(day, 1))}">${pills}</div>
   </section>`;
 }
 
@@ -379,13 +393,13 @@ function nextView(m) {
   const { last, day, t } = m;
   const nextPeriod = m.periods.find(p => p.n >= t && !p.skipped);
   const items = [
-    nextPeriod && [nextPeriod.n, 'waterDrop', 'primary', 'Ciclo previsto', nextPeriod.tentative ? 'se prendi le placebo' : ''],
-    [(last.p !== false && day < 25) ? last.s + 24 : m.proj[0].s + 24, 'pill', '', 'Prime placebo', 'giorno 25'],
-    [m.nextStart, 'eventRepeat', '', 'Prossimo blister', last.p === null && day <= 28 ? 'dopo le placebo' : ''],
-    [nextRx(state, m), 'prescriptions', 'neutral', 'Ricetta dal medico', 'chiedila al medico di base'],
+    nextPeriod && [nextPeriod.n, 'waterDrop', 'primary', T.expectedPeriod, nextPeriod.tentative ? T.ifPlacebo : ''],
+    [(last.p !== false && day < 25) ? last.s + 24 : m.proj[0].s + 24, 'pill', '', T.firstPlacebo, T.day25],
+    [m.nextStart, 'eventRepeat', '', T.nextPack, last.p === null && day <= 28 ? T.afterPlacebo : ''],
+    [nextRx(state, m), 'prescriptions', 'neutral', T.rx, T.rxAsk],
   ].filter(Boolean).sort((a, b) => a[0] - b[0]);
-  return `<section class="card"><h2 class="title-m">Prossime date</h2><ul class="list">${items.map(([n, ic, tone, head, extra]) =>
-    `<li class="li"><span class="av ${tone}">${icon(ic)}</span><div><div class="li-h">${head}</div><div class="li-s">${fmt(n)}${extra ? ', ' + extra : ''}</div></div><span class="li-t">${rel(n, t)}</span></li>`).join('')}</ul></section>`;
+  return `<section class="card"><h2 class="title-m">${T.upcoming}</h2><ul class="list">${items.map(([n, ic, tone, head, extra]) =>
+    `<li class="li"><span class="av ${tone}">${icon(ic)}</span><div><div class="li-h">${head}</div><div class="li-s">${T.fmt(n)}${extra ? ', ' + extra : ''}</div></div><span class="li-t">${T.rel(n, t)}</span></li>`).join('')}</ul></section>`;
 }
 
 function calendarView(m) {
@@ -395,118 +409,123 @@ function calendarView(m) {
   const first = d2n(`${y}-${String(mo + 1).padStart(2, '0')}-01`);
   const daysIn = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
   const lead = (new Date(first * DAY).getUTCDay() + 6) % 7;
-  const title = new Date(first * DAY).toLocaleDateString('it-IT', { month: 'long', year: 'numeric', timeZone: 'UTC' });
   const away = y !== now.getFullYear() || mo !== now.getMonth();
-  let cells = ['L', 'M', 'M', 'G', 'V', 'S', 'D'].map(d => `<div class="dow" aria-hidden="true">${d}</div>`).join('');
+  const C = T.cal;
+  let cells = T.weekdays.map(d => `<div class="dow" aria-hidden="true">${d}</div>`).join('');
   for (let i = 0; i < lead; i++) cells += '<div></div>';
   for (let k = 0; k < daysIn; k++) {
     const n = first + k, info = map.get(n), col = (lead + k) % 7;
-    const cls = ['d'];
-    let tip = fmtLong(n), mark = false;
+    const cls = ['d'], tip = [T.fmtLong(n)];
+    let mark = false;
     if (info) {
-      if (info.kind === 'gap') { cls.push('gap'); tip += ', nessun blister registrato'; }
+      if (info.kind === 'gap') { cls.push('gap'); tip.push(C.noPack); }
       else {
-        // fascia continua per i giorni dello stesso tipo, arrotondata dove cambia tipo, blister o settimana
+        // fascia continua per i giorni dello stesso tipo, arrotondata dove cambia tipo, blister, settimana o mese
         const prev = map.get(n - 1), next = map.get(n + 1);
         cls.push(info.kind);
         if (col === 0 || k === 0 || info.start || !prev || prev.kind !== info.kind) cls.push('bs');
         if (col === 6 || k === daysIn - 1 || !next || next.kind !== info.kind || next.start) cls.push('be');
         if (info.period) cls.push('period');
-        tip += info.period ? ', ciclo previsto' : info.kind === 'placebo' ? `, placebo ${info.day - 24}` : `, attiva ${info.day}`;
-        if (info.start) { mark = true; tip += ', inizio blister'; }
-        if (info.skipend) { mark = true; cls.push('skipend'); tip += ', placebo saltate'; }
+        tip.push(info.period ? C.period : info.kind === 'placebo' ? C.placebo(info.day - 24) : C.active(info.day));
+        if (info.start) { mark = true; tip.push(C.start); }
+        if (info.skipend) { mark = true; cls.push('skipend'); tip.push(C.skipEnd); }
       }
-      if (info.skippedPeriod) { cls.push('skipped'); tip += ', ciclo saltato questo mese'; }
+      if (info.skippedPeriod) { cls.push('skipped'); tip.push(C.skipped); }
       if (info.proj) cls.push('proj');
     }
-    if (n === m.t) { cls.push('today'); tip += ', oggi'; }
-    cells += `<div class="${cls.join(' ')}" role="img" aria-label="${esc(tip)}"><span class="n">${k + 1}</span>${mark ? '<i class="mk"></i>' : ''}</div>`;
+    if (n === m.t) { cls.push('today'); tip.push(C.today); }
+    cells += `<div class="${cls.join(' ')}" role="img" aria-label="${esc(tip.join(', '))}"><span class="n">${k + 1}</span>${mark ? '<i class="mk"></i>' : ''}</div>`;
   }
+  const lg = T.legend;
   return `<section class="card">
-    <div class="card-head cal-head"><h2 class="title-l">${title}</h2>
-      <div class="row" style="gap:0">${away ? '<button class="btn text" data-a="monthToday">Oggi</button>' : ''}<button class="icon-btn" data-a="monthPrev" aria-label="Mese precedente">${icon('chevronLeft')}</button><button class="icon-btn" data-a="monthNext" aria-label="Mese successivo">${icon('chevronRight')}</button></div>
+    <div class="card-head cal-head"><h2 class="title-l">${T.monthTitle(first)}</h2>
+      <div class="row" style="gap:0">${away ? `<button class="btn text" data-a="monthToday">${T.todayBtn}</button>` : ''}<button class="icon-btn" data-a="monthPrev" aria-label="${T.prevMonth}">${icon('chevronLeft')}</button><button class="icon-btn" data-a="monthNext" aria-label="${T.nextMonth}">${icon('chevronRight')}</button></div>
     </div>
     <div class="cal">${cells}</div>
     <div class="legend">
-      <span><i class="a"></i>Attiva</span><span><i class="p"></i>Placebo</span>
-      <span><i class="dot c"></i>Ciclo</span><span><i class="dot cp"></i>Ciclo previsto</span>
-      <span><i class="mk st"></i>Inizio blister</span><span><i class="mk ps"></i>Placebo saltate</span>
-      <span><i class="dot cs"></i>Ciclo saltato</span>
+      <span><i class="a"></i>${lg[0]}</span><span><i class="p"></i>${lg[1]}</span>
+      <span><i class="dot c"></i>${lg[2]}</span><span><i class="dot cp"></i>${lg[3]}</span>
+      <span><i class="mk st"></i>${lg[4]}</span><span><i class="mk ps"></i>${lg[5]}</span>
+      <span><i class="dot cs"></i>${lg[6]}</span>
     </div>
   </section>`;
 }
 
 function periodsView(m) {
   const up = m.periods.filter(p => p.n >= m.t).slice(0, 6);
-  return `<section class="card"><div><h2 class="title-m">Prossimi cicli</h2><p class="body-m muted">Se prendi tutte le placebo.</p></div><ul class="list">${up.map(p => {
-    const [ic, tone, sub] = p.skipped ? ['eventBusy', 'tertiary', 'Placebo saltate, niente ciclo']
-      : p.current ? ['waterDrop', 'primary', p.tentative ? 'Blister in corso, da confermare il giorno 25' : 'Blister in corso, placebo confermate']
+  return `<section class="card"><div><h2 class="title-m">${T.nextPeriods}</h2><p class="body-m muted">${T.ifAllPlacebo}</p></div><ul class="list">${up.map(p => {
+    const [ic, tone, sub] = p.skipped ? ['eventBusy', 'tertiary', T.skippedNoPeriod]
+      : p.current ? ['waterDrop', 'primary', p.tentative ? T.currentTentative : T.currentConfirmed]
         : ['waterDrop', '', ''];
-    return `<li class="li"><span class="av ${tone}">${icon(ic)}</span><div><div class="li-h">${fmtLong(p.n)}</div>${sub ? `<div class="li-s">${sub}</div>` : ''}</div><span class="li-t">${rel(p.n, m.t)}</span></li>`;
+    return `<li class="li"><span class="av ${tone}">${icon(ic)}</span><div><div class="li-h">${T.fmtLong(p.n)}</div>${sub ? `<div class="li-s">${sub}</div>` : ''}</div><span class="li-t">${T.rel(p.n, m.t)}</span></li>`;
   }).join('')}</ul></section>`;
 }
 
 function historyView() {
   const rows = [...state.blisters].reverse().map(b => {
-    const s = d2n(b.start);
-    const [ic, tone, sub] = b.placebo === true ? ['checkCircle', '', `Placebo prese · ciclo ${fmt(s + 27)}`]
-      : b.placebo === false ? ['skipNext', 'tertiary', `Placebo saltate · ciclo saltato ${fmt(s + 27)}`]
-        : ['pill', 'primary', `In corso · ciclo previsto ${fmt(s + 27)}`];
+    const s = d2n(b.start), period = T.fmt(s + 27);
+    const [ic, tone, sub] = b.placebo === true ? ['checkCircle', '', T.histTaken(period)]
+      : b.placebo === false ? ['skipNext', 'tertiary', T.histSkipped(period)]
+        : ['pill', 'primary', T.histOpen(period)];
     return `<li class="li"><span class="av ${tone}">${icon(ic)}</span>
-      <div><div class="li-h">${fmt(s, { day: 'numeric', month: 'long', year: 'numeric' })}</div><div class="li-s">${sub}</div></div>
-      <button class="icon-btn" data-a="del" data-start="${b.start}" aria-label="Elimina il blister del ${fmt(s)}">${icon('del')}</button></li>`;
+      <div><div class="li-h">${T.fmtFull(s)}</div><div class="li-s">${sub}</div></div>
+      <button class="icon-btn" data-a="del" data-start="${b.start}" aria-label="${T.delAria(T.fmt(s))}">${icon('del')}</button></li>`;
   }).join('');
   return `<section class="card"><ul class="list">${rows}</ul></section>
-    <button class="fab" data-a="addOpen">${icon('add')}Aggiungi</button>`;
+    <button class="fab" data-a="addOpen">${icon('add')}${T.add}</button>`;
 }
 
 function settingsView(m) {
   const item = (ic, tone, head, sub, ctl) => `<li class="li"><span class="av ${tone}">${icon(ic)}</span><div><div class="li-h">${head}</div><div class="li-s">${sub}</div></div>${ctl || '<span></span>'}</li>`;
   const granted = notif.display === 'granted';
   const rx = nextRx(state, m);
+  const lang = state.settings.lang || 'auto';
+  const langSel = `<select class="time" id="lang" aria-label="${T.language}">${[['auto', T.langAuto], ['it', 'Italiano'], ['en', 'English']].map(([v, l]) =>
+    `<option value="${v}"${v === lang ? ' selected' : ''}>${l}</option>`).join('')}</select>`;
   return `<section class="card"><ul class="list">
-    ${item('schedule', '', 'Orario dei promemoria', 'Ogni notifica arriva a quest\'ora nel giorno giusto.', `<input type="time" class="time" id="notif-time" value="${esc(state.settings.time)}" aria-label="Orario dei promemoria">`)}
-    ${!NATIVE ? item('notificationsOff', 'neutral', 'Notifiche', 'Disponibili solo nell\'app installata sul telefono.')
-      : granted ? item('notifications', '', 'Notifiche', '<span class="status-ok">Attive</span>. Inizio blister, giorno 25, ciclo e ricetta.', '<button class="btn tonal" data-a="testNotif">Prova</button>')
-        : item('notificationsOff', 'neutral', 'Notifiche', '<span class="status-off">Disattivate</span>. Senza permesso non posso avvisarti.', '<button class="btn filled" data-a="notifOn">Attiva</button>')}
-    ${NATIVE && granted && notif.exact !== 'granted' && notif.exact !== 'unknown' ? item('alarm', '', 'Orario esatto', 'Senza questo permesso Android può ritardare i promemoria di qualche minuto.', '<button class="btn tonal" data-a="exactOn">Consenti</button>') : ''}
-    ${item('prescriptions', '', 'Ricetta dal medico', `Ogni due blister. Prossimo promemoria ${fmt(rx)}, ${rel(rx, m.t)}.`, '<button class="btn outlined" data-a="rxShift" aria-label="Sposta il promemoria della ricetta al blister accanto">Sposta</button>')}
-    ${item('backup', '', 'Backup', 'I dati restano su questo telefono. Il backup serve per spostarli su un altro.', '<button class="btn outlined" data-a="backupOpen">Apri</button>')}
+    ${item('schedule', '', T.time, T.timeSub, `<input type="time" class="time" id="notif-time" value="${esc(state.settings.time)}" aria-label="${T.time}">`)}
+    ${!NATIVE ? item('notificationsOff', 'neutral', T.notif, T.notifWeb)
+      : granted ? item('notifications', '', T.notif, T.notifOn, `<button class="btn tonal" data-a="testNotif">${T.test}</button>`)
+        : item('notificationsOff', 'neutral', T.notif, T.notifOff, `<button class="btn filled" data-a="notifOn">${T.enable}</button>`)}
+    ${NATIVE && granted && notif.exact !== 'granted' && notif.exact !== 'unknown' ? item('alarm', '', T.exact, T.exactSub, `<button class="btn tonal" data-a="exactOn">${T.allow}</button>`) : ''}
+    ${item('prescriptions', '', T.rx, T.rxSub(T.fmt(rx), T.rel(rx, m.t)), `<button class="btn outlined" data-a="rxShift" aria-label="${T.moveAria}">${T.move}</button>`)}
+    ${item('translate', '', T.language, T.langSub, langSel)}
+    ${item('backup', '', T.backup, T.backupSub, `<button class="btn outlined" data-a="backupOpen">${T.open}</button>`)}
   </ul></section>`;
 }
 
 function dialogView() {
   if (ui.dialog === 'add') {
-    const opts = [['placebo', 'Prese'], ['skip', 'Saltate'], ['open', 'Non ancora']];
+    const opts = [['placebo', T.optTaken], ['skip', T.optSkipped], ['open', T.optOpen]];
     return `<dialog id="dlg" class="sheet" aria-labelledby="dlg-t"><div><div class="handle"></div><div class="dlg-body">
-      <h2 id="dlg-t" class="headline-s">Aggiungi un blister</h2>
-      <label class="field"><span>Data della prima compressa</span><input type="date" class="input" id="add-date" max="${localToday()}"></label>
-      <fieldset class="seg"><legend>Placebo</legend><div class="seg-row">${opts.map(([v, l], i) =>
+      <h2 id="dlg-t" class="headline-s">${T.addTitle}</h2>
+      <label class="field"><span>${T.firstPill}</span><input type="date" class="input" id="add-date" max="${localToday()}"></label>
+      <fieldset class="seg"><legend>${T.placeboLegend}</legend><div class="seg-row">${opts.map(([v, l], i) =>
         `<label><input type="radio" name="add-out" value="${v}"${i ? '' : ' checked'}><span class="seg-in">${icon('check')}${l}</span></label>`).join('')}</div></fieldset>
       <p class="dlg-err" hidden></p>
-      <div class="actions-end"><button class="btn text" data-a="closeDialog">Annulla</button><button class="btn filled" data-a="addSave">Aggiungi</button></div>
+      <div class="actions-end"><button class="btn text" data-a="closeDialog">${T.cancel}</button><button class="btn filled" data-a="addSave">${T.add}</button></div>
     </div></div></dialog>`;
   }
   if (ui.dialog === 'del') {
     return `<dialog id="dlg" class="dlg" aria-labelledby="dlg-t"><div class="dlg-body">
-      <h2 id="dlg-t" class="headline-s">Eliminare il blister?</h2>
-      <p class="body-m muted">Il blister iniziato ${fmtLong(d2n(ui.delStart))} sparisce dallo storico e le date previste vengono ricalcolate.</p>
-      <div class="actions-end"><button class="btn text" data-a="closeDialog">Annulla</button><button class="btn text" data-a="delYes">Elimina</button></div>
+      <h2 id="dlg-t" class="headline-s">${T.delTitle}</h2>
+      <p class="body-m muted">${T.delWhy(T.fmtLong(d2n(ui.delStart)))}</p>
+      <div class="actions-end"><button class="btn text" data-a="closeDialog">${T.cancel}</button><button class="btn text" data-a="delYes">${T.delete}</button></div>
     </div></dialog>`;
   }
   if (ui.dialog === 'backup') {
-    const out = state.blisters.length ? `<p class="body-m muted">Copia questo testo e conservalo: ti serve per ripristinare i dati su un altro telefono.</p>
-      <textarea id="backup-out" class="input" readonly aria-label="Backup dei dati">${esc(JSON.stringify(state))}</textarea>
-      <div class="row"><button class="btn tonal" data-a="copyBackup">${icon('contentCopy')}Copia</button></div>
-      <h3 class="title-m">Ripristina</h3>` : '';
+    const out = state.blisters.length ? `<p class="body-m muted">${T.backupCopyWhy}</p>
+      <textarea id="backup-out" class="input" readonly aria-label="${T.backupAria}">${esc(JSON.stringify(state))}</textarea>
+      <div class="row"><button class="btn tonal" data-a="copyBackup">${icon('contentCopy')}${T.copy}</button></div>
+      <h3 class="title-m">${T.restore}</h3>` : '';
     return `<dialog id="dlg" class="sheet" aria-labelledby="dlg-t"><div><div class="handle"></div><div class="dlg-body">
-      <h2 id="dlg-t" class="headline-s">Backup</h2>${out}
-      <p class="body-m muted">Incolla qui un backup. I dati attuali vengono sostituiti.</p>
-      <textarea id="backup-in" class="input" aria-label="Incolla un backup" placeholder='{"blisters":[...]}'></textarea>
+      <h2 id="dlg-t" class="headline-s">${T.backup}</h2>${out}
+      <p class="body-m muted">${T.restoreWhy}</p>
+      <textarea id="backup-in" class="input" aria-label="${T.pasteAria}" placeholder='{"blisters":[...]}'></textarea>
       <p class="dlg-err" hidden></p>
-      <div class="row" id="imp-ask"><button class="btn outlined" data-a="importAsk">${icon('contentPaste')}Importa</button></div>
-      <div class="row" id="imp-confirm" hidden><span class="body-m grow">Sostituire i dati attuali?</span><button class="btn text" data-a="importNo">Annulla</button><button class="btn filled" data-a="importYes">Sostituisci</button></div>
-      <div class="actions-end"><button class="btn text" data-a="closeDialog">Chiudi</button></div>
+      <div class="row" id="imp-ask"><button class="btn outlined" data-a="importAsk">${icon('contentPaste')}${T.import}</button></div>
+      <div class="row" id="imp-confirm" hidden><span class="body-m grow">${T.replaceQ}</span><button class="btn text" data-a="importNo">${T.cancel}</button><button class="btn filled" data-a="importYes">${T.replace}</button></div>
+      <div class="actions-end"><button class="btn text" data-a="closeDialog">${T.close}</button></div>
     </div></div></dialog>`;
   }
   return '';
@@ -514,8 +533,8 @@ function dialogView() {
 
 /* ---------- avvio ---------- */
 async function boot() {
-  buildNav();
   state = await load();
+  applyLang();
   await setupNotifications();
   render();
   reschedule();

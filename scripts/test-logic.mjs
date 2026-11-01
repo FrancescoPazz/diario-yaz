@@ -1,6 +1,7 @@
 // Test dei calcoli del blister: node scripts/test-logic.mjs (oppure npm test)
 import assert from 'node:assert/strict';
 import { d2n, n2d, compute, buildMap, planNotifications, applyAnswer, parseBackup, KIND, nextRx, shiftRx } from '../src/logic.js';
+import { strings, pickLang } from '../src/i18n.js';
 
 const at = (st, day) => compute(st, d2n(day));
 const base = { blisters: [{ start: '2026-10-12', placebo: null }], lastNo: null, settings: { time: '09:00' } };
@@ -65,6 +66,25 @@ assert.equal(n2d(nextRx({ ...base, settings: { time: '09:00', rx: shiftRx(moved,
 // Backup.
 assert.deepEqual(parseBackup(JSON.stringify(skipped)).blisters, skipped.blisters);
 assert.equal(parseBackup(JSON.stringify(moved)).settings.rx, moved.settings.rx);
+assert.throws(() => parseBackup('{}'), { message: 'list' });
+
+// Lingue: italiano e inglese hanno le stesse chiavi; senza scelta si segue il telefono (italiano solo se è in italiano).
+const it = strings('it'), en = strings('en');
+const keys = o => Object.keys(o).sort().join();
+assert.equal(keys(en), keys(it));
+assert.equal(it.lang, 'it');                 // il codice lingua non deve coprire un testo con lo stesso nome
+assert.equal(it.language, 'Lingua');
+for (const k of Object.keys(it)) if (it[k] && typeof it[k] === 'object') assert.equal(keys(en[k]), keys(it[k]), k);
+assert.equal(pickLang('auto', 'it-IT'), 'it');
+assert.equal(pickLang('auto', 'en-US'), 'en');
+assert.equal(pickLang('auto', 'fr-FR'), 'en');
+assert.equal(pickLang('it', 'en-US'), 'it');
+assert.equal(it.weekdays.join(''), 'LMMGVSD');
+assert.equal(en.rel(d2n('2026-11-02'), d2n('2026-11-01')), 'tomorrow');
+for (const L of [it, en]) for (const p of [...plan, ...planNotifications(base, d2n('2026-11-09')), ...planNotifications(skipped, d2n('2026-11-05'))]) {
+  const [title, body] = L.msg[p.kind](p);
+  assert.ok(title && body && !body.includes('undefined'), `${L.lang} ${p.kind}`);
+}
 assert.throws(() => parseBackup('ciao'));
 
 console.log('Tutti i test sui calcoli sono passati.');

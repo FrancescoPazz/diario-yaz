@@ -271,6 +271,10 @@ textarea.input { height: 112px; padding: 12px 16px; resize: vertical; font: 13px
 textarea.input:focus { padding: 11px 15px; }
 .time {
   height: 40px; padding: 0 12px; border: 0; border-radius: var(--shape-s); font-size: 16px; font-weight: 600;
+  field-sizing: content; max-width: 40vw;   /* nella WebView di Android ora e select sarebbero larghissimi */
+}
+input.time { width: 8.5em; }                /* field-sizing non vale per l'ora di Android: basta per "09:00" e "9:00 AM" */
+.time {
   background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container);
 }
 .time:focus-visible { outline: 3px solid var(--md-sys-color-secondary); outline-offset: 2px; }

@@ -12,7 +12,8 @@ export const localToday = (now = new Date()) =>
   now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
 
 /**
- * Stato salvato: { blisters: [{ start, placebo: true | false | null }], lastNo: "AAAA-MM-GG" | null, settings: { time: "HH:MM", rx: "AAAA-MM-GG" | null } }
+ * Stato salvato: { blisters: [{ start, placebo: true | false | null }], lastNo: "AAAA-MM-GG" | null,
+ *                 settings: { time: "HH:MM", rx: "AAAA-MM-GG" | null, lang: "auto" | "it" | "en" } }
  * placebo: true = placebo prese, false = placebo saltate (blister nuovo il giorno 25), null = ancora da decidere.
  * rx: una data che cade in un blister in cui ricordare la ricetta (vedi rxStarts).
  */
@@ -104,56 +105,44 @@ export function shiftRx(st, m) {
 
 /* ---------- Notifiche ---------- */
 export const KIND = { PLACEBO_Q: 1, PLACEBO_R: 2, BLISTER_Q: 3, PERIOD: 4, SKIPPED: 5, RX: 6 };
-const fmtIt = n => new Date(n * DAY).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+const ACTIONS = { [KIND.PLACEBO_Q]: 'PLACEBO', [KIND.PLACEBO_R]: 'PLACEBO', [KIND.BLISTER_Q]: 'BLISTER' };
 
 /**
  * Elenco dei promemoria da programmare da oggi (t) in avanti, per i prossimi ~3 blister.
- * Ogni voce: { id, n, kind, title, body, actionTypeId?, blisterStart }.
+ * Ogni voce: { id, n, kind, actionTypeId?, blisterStart, expected?, confirmed?, next? }; i testi li scrive i18n.js.
  * Va ricalcolato e riprogrammato a ogni modifica dei dati e a ogni apertura dell'app.
  */
 export function planNotifications(st, t, horizon = 100) {
   const m = compute(st, t);
   if (!m) return [];
   const out = new Map();
-  const add = (n, kind, blisterStart, title, body, actionTypeId) => {
+  const add = (n, kind, blisterStart, data) => {
     if (n < t || n > t + horizon) return;
     const id = kind * 100000 + n;
-    if (!out.has(id)) out.set(id, { id, n, kind, title, body, actionTypeId, blisterStart: n2d(blisterStart) });
+    if (!out.has(id)) out.set(id, { id, n, kind, actionTypeId: ACTIONS[kind], blisterStart: n2d(blisterStart), ...data });
   };
   const placeboSeq = s => {
-    add(s + 24, KIND.PLACEBO_Q, s, 'Giorno 25 · placebo o blister nuovo?',
-      'Oggi cominci a prendere le placebo oppure cominci un nuovo blister? Con il blister nuovo questo mese salti il ciclo.', 'PLACEBO');
-    add(s + 25, KIND.PLACEBO_R, s, 'Non hai ancora risposto',
-      'Il giorno 25 hai cominciato le placebo oppure un nuovo blister?', 'PLACEBO');
-    add(s + 26, KIND.PLACEBO_R, s, 'Non hai ancora risposto',
-      'Il giorno 25 hai cominciato le placebo oppure un nuovo blister?', 'PLACEBO');
+    add(s + 24, KIND.PLACEBO_Q, s);
+    add(s + 25, KIND.PLACEBO_R, s);
+    add(s + 26, KIND.PLACEBO_R, s);
   };
   const blisterSeq = (from, prevStart, expected) => {
-    for (let k = 0; k < 4; k++) {
-      const n = from + k, late = n - expected;
-      add(n, KIND.BLISTER_Q, prevStart, 'Nuovo blister',
-        'Hai cominciato un nuovo blister oggi?' + (late > 0 ? ` Era previsto ${fmtIt(expected)}.` : ''), 'BLISTER');
-    }
+    for (let k = 0; k < 4; k++) add(from + k, KIND.BLISTER_Q, prevStart, { expected: from + k > expected ? expected : null });
   };
 
   const { last } = m;
   if (last.p === null) placeboSeq(last.s);
   if (last.p !== false) {
-    add(last.s + 27, KIND.PERIOD, last.s, 'Ciclo previsto oggi',
-      last.p === true ? 'Oggi è il giorno previsto del ciclo (ultima placebo).' : 'Se hai preso le placebo, oggi è il giorno previsto del ciclo.');
+    add(last.s + 27, KIND.PERIOD, last.s, { confirmed: last.p === true });
     blisterSeq(m.nextStart, last.s, m.nominalNext);
   }
-  if (m.prev && m.prev.p === false) {
-    add(m.prev.s + 27, KIND.SKIPPED, m.prev.s, 'Questo mese salti il ciclo',
-      `Oggi avresti avuto il ciclo, ma lo salti perché hai saltato le placebo. Se prendi le placebo di questo blister, il prossimo è previsto ${fmtIt(last.s + 27)}.`);
-  }
+  if (m.prev && m.prev.p === false) add(m.prev.s + 27, KIND.SKIPPED, m.prev.s, { next: last.s + 27 });
   m.proj.slice(0, 3).forEach(b => {
     placeboSeq(b.s);
-    add(b.s + 27, KIND.PERIOD, b.s, 'Ciclo previsto oggi', 'Se hai preso le placebo, oggi è il giorno previsto del ciclo.');
+    add(b.s + 27, KIND.PERIOD, b.s, { confirmed: false });
     blisterSeq(b.s + LENGTH, b.s, b.s + LENGTH);
   });
-  rxStarts(st, m).forEach(s => add(s + RX_DAY - 1, KIND.RX, s, 'Ricetta dal medico',
-    'Tra pochi giorni finisci il secondo blister: chiedi al medico di base la nuova ricetta per la pillola.'));
+  rxStarts(st, m).forEach(s => add(s + RX_DAY - 1, KIND.RX, s));
   return [...out.values()].sort((a, b) => a.n - b.n || a.kind - b.kind);
 }
 
@@ -184,17 +173,19 @@ export function applyAnswer(st, answer, blisterStart, date) {
 
 function structuredCloneSafe(o) { return JSON.parse(JSON.stringify(o)); }
 
-/** Controlla un backup importato e lo normalizza. Lancia un Error con messaggio in italiano se non è valido. */
+/** Controlla un backup importato e lo normalizza. Se non è valido lancia un Error il cui messaggio è una chiave di T.backupErr. */
 export function parseBackup(text) {
   let d;
-  try { d = JSON.parse(text); } catch (e) { throw new Error('Il testo incollato non è un backup valido.'); }
-  if (!d || !Array.isArray(d.blisters)) throw new Error('Nel backup manca l\'elenco dei blister.');
+  try { d = JSON.parse(text); } catch (e) { throw new Error('json'); }
+  if (!d || !Array.isArray(d.blisters)) throw new Error('list');
   const re = /^\d{4}-\d{2}-\d{2}$/;
   const blisters = d.blisters.map(b => {
-    if (!b || !re.test(b.start)) throw new Error('Il backup contiene una data non valida.');
+    if (!b || !re.test(b.start)) throw new Error('date');
     return { start: b.start, placebo: b.placebo === true ? true : b.placebo === false ? false : null };
   });
-  const time = d.settings && /^\d{2}:\d{2}$/.test(d.settings.time) ? d.settings.time : '09:00';
-  const rx = d.settings && re.test(d.settings.rx || '') ? d.settings.rx : null;
-  return { blisters, lastNo: re.test(d.lastNo || '') ? d.lastNo : null, settings: { time, rx } };
+  const s = d.settings || {};
+  const time = /^\d{2}:\d{2}$/.test(s.time) ? s.time : '09:00';
+  const rx = re.test(s.rx || '') ? s.rx : null;
+  const lang = s.lang === 'it' || s.lang === 'en' ? s.lang : 'auto';
+  return { blisters, lastNo: re.test(d.lastNo || '') ? d.lastNo : null, settings: { time, rx, lang } };
 }
