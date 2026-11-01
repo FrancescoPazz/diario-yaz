@@ -1,0 +1,60 @@
+# Costruisce l'APK di Diario Yaz su GitHub a ogni modifica del ramo main (o a mano da Actions › Run workflow)
+# e lo pubblica nella sezione Releases del repository, pronto da scaricare sul telefono.
+name: Build APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Installa le dipendenze
+        run: npm ci
+
+      - name: Controlla i calcoli delle date
+        run: npm test
+
+      - name: Prepara l'app web e sincronizza Android
+        run: npm run sync
+
+      - name: Compila l'APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Rinomina l'APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk "diario-yaz-${{ github.run_number }}.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: diario-yaz-apk
+          path: diario-yaz-*.apk
+
+      - name: Pubblica nella pagina Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v1.0.${{ github.run_number }}" "diario-yaz-${{ github.run_number }}.apk" \
+            --title "Diario Yaz 1.0.${{ github.run_number }}" \
+            --notes "Scarica il file .apk dal telefono e aprilo per installare o aggiornare l'app."

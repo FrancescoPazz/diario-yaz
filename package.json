@@ -1,0 +1,30 @@
+{
+  "name": "diario-yaz",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Diario della pillola Yaz (24+4): calendario, previsione del ciclo e promemoria",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node scripts/test-logic.mjs",
+    "sync": "npm run build && npx cap sync android",
+    "open": "npx cap open android",
+    "apk": "npm run sync && cd android && ./gradlew assembleDebug",
+    "icons": "npx capacitor-assets generate --android"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.3",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/local-notifications": "8.3.1",
+    "@capacitor/preferences": "8.0.1"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "3.0.5",
+    "@capacitor/cli": "8.5.3",
+    "@fontsource/gloock": "5.3.0",
+    "@fontsource/ibm-plex-mono": "5.3.0",
+    "@fontsource/instrument-sans": "5.3.0",
+    "esbuild": "0.28.2"
+  },
+  "type": "module"
+}

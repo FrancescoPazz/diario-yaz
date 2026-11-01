@@ -1,0 +1,14 @@
+{
+  "appId": "it.diarioyaz.app",
+  "appName": "Diario Yaz",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#F5F4F8"
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_notify",
+      "iconColor": "#A92D58"
+    }
+  }
+}
