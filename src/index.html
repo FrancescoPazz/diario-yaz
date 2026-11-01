@@ -8,23 +8,11 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <div>
-        <h1>Diario Yaz</h1>
-        <p class="sub">Blister da 24 compresse attive + 4 placebo</p>
-      </div>
-    </header>
-    <div id="toast" class="toast" role="status" hidden></div>
-    <div id="err" class="err" role="alert" hidden></div>
-    <main id="app">
-      <section class="panel"><p class="sub">Caricamento…</p></section>
-    </main>
-    <footer>
-      Il ciclo previsto corrisponde al giorno della quarta placebo (giorno 28 del blister). Quando salti le placebo e inizi subito un nuovo blister, il conteggio riparte da quel giorno e quel mese salti il ciclo.
-      I dati restano salvati su questo telefono. Le previsioni non sostituiscono le indicazioni del medico o del foglietto illustrativo.
-    </footer>
-  </div>
+  <header class="top-bar"><span id="top-title" class="top-title"></span></header>
+  <div id="err" class="err" role="alert" hidden></div>
+  <main id="app" class="screen"></main>
+  <nav id="nav" class="nav-bar" aria-label="Sezioni" hidden></nav>
+  <div id="snackbar" class="snackbar" role="status" hidden></div>
   <script src="app.js"></script>
 </body>
 </html>

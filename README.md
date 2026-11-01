@@ -71,6 +71,6 @@ Una build locale ha numero di versione 1, e Android non la installa sopra una ve
 
 ## Tecnologia
 
-L'app usa [Capacitor 8](https://capacitorjs.com): l'interfaccia in HTML, CSS e JavaScript gira dentro un'app Android nativa. I plugin sono `@capacitor/preferences` per il salvataggio, `@capacitor/local-notifications` per i promemoria con i pulsanti e `@capacitor/app` per aggiornare la pagina quando l'app torna in primo piano. I font sono inclusi, così l'app funziona anche offline.
+L'app usa [Capacitor 8](https://capacitorjs.com): l'interfaccia in HTML, CSS e JavaScript gira dentro un'app Android nativa. I plugin sono `@capacitor/preferences` per il salvataggio, `@capacitor/local-notifications` per i promemoria con i pulsanti e `@capacitor/app` per aggiornare la pagina quando l'app torna in primo piano. L'interfaccia segue Material 3: i colori sono uno schema generato da `#A92D58` con `@material/material-color-utilities` e scritto come token `--md-sys-*` in cima a `src/styles.css`, le icone sono Material Symbols (`@material-symbols/svg-400`, solo quelle usate finiscono nell'app) e il font è Roboto Flex, incluso così l'app funziona anche offline.
 
 Le previsioni non sostituiscono le indicazioni del medico o del foglietto illustrativo.
