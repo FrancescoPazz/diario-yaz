@@ -19,20 +19,38 @@ android {
     }
     // Firma sempre con la stessa chiave: così ogni nuova versione si installa sopra la precedente
     // senza disinstallare l'app e senza perdere i dati salvati sul telefono.
+    // La chiave NON è nel repository: su GitHub arriva dai Secrets (vedi build-apk.yml),
+    // sul computer da android/keystore.properties (escluso da git).
+    def signingProps = new Properties()
+    def signingFile = rootProject.file('keystore.properties')
+    if (signingFile.exists()) {
+        signingFile.withInputStream { signingProps.load(it) }
+    }
+    def signingValue = { String key, String env -> System.getenv(env) ?: signingProps.getProperty(key) }
+    def storePath = signingValue('storeFile', 'DIARIOYAZ_KEYSTORE')
+    def hasSigning = storePath && file(storePath).exists()
+
     signingConfigs {
-        diarioyaz {
-            storeFile file('diario-yaz.keystore')
-            storePassword 'diarioyaz'
-            keyAlias 'diarioyaz'
-            keyPassword 'diarioyaz'
+        if (hasSigning) {
+            diarioyaz {
+                storeFile file(storePath)
+                storePassword signingValue('storePassword', 'DIARIOYAZ_STORE_PASSWORD')
+                keyAlias signingValue('keyAlias', 'DIARIOYAZ_KEY_ALIAS')
+                keyPassword signingValue('keyPassword', 'DIARIOYAZ_KEY_PASSWORD')
+            }
         }
     }
     buildTypes {
         debug {
-            signingConfig signingConfigs.diarioyaz
+            // Senza chiave configurata usa la chiave di debug standard di Android.
+            if (hasSigning) {
+                signingConfig signingConfigs.diarioyaz
+            }
         }
         release {
-            signingConfig signingConfigs.diarioyaz
+            if (hasSigning) {
+                signingConfig signingConfigs.diarioyaz
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
