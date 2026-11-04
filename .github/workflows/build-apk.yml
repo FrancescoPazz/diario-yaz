@@ -39,8 +39,23 @@ jobs:
       - name: Prepara l'app web e sincronizza Android
         run: npm run sync
 
+      - name: Prepara la chiave di firma dai Secrets
+        env:
+          KEYSTORE_BASE64: ${{ secrets.DIARIOYAZ_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::Manca il secret DIARIOYAZ_KEYSTORE_BASE64: senza la chiave l'APK non si potrebbe aggiornare sul telefono."
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/diario-yaz.keystore"
+          echo "DIARIOYAZ_KEYSTORE=$RUNNER_TEMP/diario-yaz.keystore" >> "$GITHUB_ENV"
+
       - name: Compila l'APK
         working-directory: android
+        env:
+          DIARIOYAZ_STORE_PASSWORD: ${{ secrets.DIARIOYAZ_STORE_PASSWORD }}
+          DIARIOYAZ_KEY_ALIAS: ${{ secrets.DIARIOYAZ_KEY_ALIAS }}
+          DIARIOYAZ_KEY_PASSWORD: ${{ secrets.DIARIOYAZ_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
