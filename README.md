@@ -62,7 +62,7 @@ Forecasts for the packs ahead assume you take all the placebos, and every answer
 | Screen | What is on it |
 |---|---|
 | **Today** | The question of the day when there is one, the pack with the pills already taken, and the next dates in order: placebos, period, new pack, prescription. |
-| **Calendar** | Active days, placebos, expected periods and skipped ones, month by month, plus the list of the next periods. |
+| **Calendar** | Active days, placebos, expected periods and skipped ones, month by month; tap a day to see what it is (pill number, placebo, period). Below it, the list of the next periods. |
 | **History** | The packs you recorded and whether you took or skipped the placebos. You can add older packs or delete one. |
 | **Settings** | Reminder time, notification test, exact time, prescription reminder, language and backup. |
 

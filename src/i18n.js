@@ -62,7 +62,8 @@ const TEXT = {
     rxAsk: 'chiedila al medico di base',
 
     cal: { noPack: 'nessun blister registrato', period: 'ciclo previsto', placebo: n => `placebo ${n}`, active: n => `attiva ${n}`,
-      start: 'inizio blister', skipEnd: 'placebo saltate', skipped: 'ciclo saltato questo mese', today: 'oggi' },
+      start: 'inizio blister', skipEnd: 'placebo saltate', skipped: 'ciclo saltato questo mese', today: 'oggi',
+      noInfo: 'nessun dato per questo giorno', hint: 'Tocca un giorno per vederne i dettagli.' },
     todayBtn: 'Oggi',
     prevMonth: 'Mese precedente',
     nextMonth: 'Mese successivo',
@@ -224,7 +225,8 @@ const TEXT = {
     rxAsk: 'ask your doctor for it',
 
     cal: { noPack: 'no pack recorded', period: 'expected period', placebo: n => `placebo ${n}`, active: n => `active pill ${n}`,
-      start: 'pack start', skipEnd: 'placebos skipped', skipped: 'period skipped this month', today: 'today' },
+      start: 'pack start', skipEnd: 'placebos skipped', skipped: 'period skipped this month', today: 'today',
+      noInfo: 'nothing recorded for this day', hint: 'Tap a day to see its details.' },
     todayBtn: 'Today',
     prevMonth: 'Previous month',
     nextMonth: 'Next month',

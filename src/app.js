@@ -50,7 +50,7 @@ const TABS = [['oggi', 'today'], ['calendario', 'calendarMonth'], ['storico', 'h
 
 let state = null;
 let T = strings(pickLang('auto', navigator.language));
-let ui = { tab: 'oggi', month: null, pickDate: false, dialog: null, delStart: null };
+let ui = { tab: 'oggi', month: null, calDay: null, pickDate: false, dialog: null, delStart: null };
 let shownTab = null;
 let notif = { display: 'unknown', exact: 'unknown' };
 
@@ -204,9 +204,10 @@ const actions = {
     if (d2n(v) <= d2n(lastB().start) + 23) return showErr(T.err.after24);
     answer('yes', v);
   },
-  monthPrev() { ui.month = shiftMonth(ui.month, -1); render(); },
-  monthNext() { ui.month = shiftMonth(ui.month, 1); render(); },
-  monthToday() { ui.month = null; render(); },
+  monthPrev() { ui.month = shiftMonth(ui.month, -1); ui.calDay = null; render(); },
+  monthNext() { ui.month = shiftMonth(ui.month, 1); ui.calDay = null; render(); },
+  monthToday() { ui.month = null; ui.calDay = null; render(); },
+  calDay(el) { ui.calDay = Number(el.dataset.n); render(); },
   closeDialog,
   addOpen() { openDialog('add'); },
   addSave() {
@@ -411,6 +412,9 @@ function calendarView(m) {
   const lead = (new Date(first * DAY).getUTCDay() + 6) % 7;
   const away = y !== now.getFullYear() || mo !== now.getMonth();
   const C = T.cal;
+  const sel = ui.calDay !== null && ui.calDay >= first && ui.calDay < first + daysIn ? ui.calDay
+    : (first <= m.t && m.t < first + daysIn ? m.t : null);
+  let detail = null;
   let cells = T.weekdays.map(d => `<div class="dow" aria-hidden="true">${d}</div>`).join('');
   for (let i = 0; i < lead; i++) cells += '<div></div>';
   for (let k = 0; k < daysIn; k++) {
@@ -434,14 +438,22 @@ function calendarView(m) {
       if (info.proj) cls.push('proj');
     }
     if (n === m.t) { cls.push('today'); tip.push(C.today); }
-    cells += `<div class="${cls.join(' ')}" role="img" aria-label="${esc(tip.join(', '))}"><span class="n">${k + 1}</span>${mark ? '<i class="mk"></i>' : ''}</div>`;
+    if (n === sel) { cls.push('sel'); detail = tip; }
+    cells += `<button class="${cls.join(' ')}" data-a="calDay" data-n="${n}" aria-pressed="${n === sel}" aria-label="${esc(tip.join(', '))}"><span class="n">${k + 1}</span>${mark ? '<i class="mk"></i>' : ''}</button>`;
   }
+  // Dettaglio del giorno toccato (di base oggi): le stesse informazioni che il lettore di schermo legge sulla casella
+  const [dHead, ...dInfo] = detail || [];
+  const dText = dInfo.join(', ') || C.noInfo;
+  const dayDetail = `<p class="cal-detail body-m" aria-live="polite">${detail
+    ? `<strong>${esc(dHead)}</strong><span>${esc(dText.charAt(0).toUpperCase() + dText.slice(1))}</span>`
+    : `<span class="muted">${C.hint}</span>`}</p>`;
   const lg = T.legend;
   return `<section class="card">
     <div class="card-head cal-head"><h2 class="title-l">${T.monthTitle(first)}</h2>
       <div class="row" style="gap:0">${away ? `<button class="btn text" data-a="monthToday">${T.todayBtn}</button>` : ''}<button class="icon-btn" data-a="monthPrev" aria-label="${T.prevMonth}">${icon('chevronLeft')}</button><button class="icon-btn" data-a="monthNext" aria-label="${T.nextMonth}">${icon('chevronRight')}</button></div>
     </div>
     <div class="cal">${cells}</div>
+    ${dayDetail}
     <div class="legend">
       <span><i class="a"></i>${lg[0]}</span><span><i class="p"></i>${lg[1]}</span>
       <span><i class="dot c"></i>${lg[2]}</span><span><i class="dot cp"></i>${lg[3]}</span>
