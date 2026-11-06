@@ -173,19 +173,35 @@ export function applyAnswer(st, answer, blisterStart, date) {
 
 function structuredCloneSafe(o) { return JSON.parse(JSON.stringify(o)); }
 
+// A "YYYY-MM-DD" string that is a real calendar day (2026-02-30 is not).
+const isDate = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && n2d(d2n(v)) === v;
+const isTime = v => typeof v === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
+
+// Shared normalisation of saved or imported data. With strict, a bad pack throws; otherwise it is dropped and counted.
+function normalize(d, strict) {
+  const blisters = [], seen = new Set();
+  let dropped = 0;
+  for (const b of (d && Array.isArray(d.blisters)) ? d.blisters : []) {
+    if (!b || !isDate(b.start) || seen.has(b.start)) {
+      if (strict) throw new Error(b && isDate(b.start) ? 'dup' : 'date');
+      dropped++; continue;
+    }
+    seen.add(b.start);
+    blisters.push({ start: b.start, placebo: b.placebo === true ? true : b.placebo === false ? false : null });
+  }
+  blisters.sort((a, b) => (a.start < b.start ? -1 : 1));
+  const s = (d && d.settings) || {};
+  const settings = { time: isTime(s.time) ? s.time : '09:00', rx: isDate(s.rx) ? s.rx : null, lang: s.lang === 'it' || s.lang === 'en' ? s.lang : 'auto' };
+  return { state: { blisters, lastNo: d && isDate(d.lastNo) ? d.lastNo : null, settings }, dropped };
+}
+
 /** Controlla un backup importato e lo normalizza. Se non è valido lancia un Error il cui messaggio è una chiave di T.backupErr. */
 export function parseBackup(text) {
   let d;
   try { d = JSON.parse(text); } catch (e) { throw new Error('json'); }
   if (!d || !Array.isArray(d.blisters)) throw new Error('list');
-  const re = /^\d{4}-\d{2}-\d{2}$/;
-  const blisters = d.blisters.map(b => {
-    if (!b || !re.test(b.start)) throw new Error('date');
-    return { start: b.start, placebo: b.placebo === true ? true : b.placebo === false ? false : null };
-  });
-  const s = d.settings || {};
-  const time = /^\d{2}:\d{2}$/.test(s.time) ? s.time : '09:00';
-  const rx = re.test(s.rx || '') ? s.rx : null;
-  const lang = s.lang === 'it' || s.lang === 'en' ? s.lang : 'auto';
-  return { blisters, lastNo: re.test(d.lastNo || '') ? d.lastNo : null, settings: { time, rx, lang } };
+  return normalize(d, true).state;
 }
+
+/** Normalises the data saved on the phone: packs with a missing, invalid or repeated start date are dropped. */
+export function normalizeState(d) { return normalize(d, false); }

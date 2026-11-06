@@ -3,7 +3,7 @@ import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { App } from '@capacitor/app';
-import { DAY, d2n, n2d, localToday, compute, buildMap, planNotifications, applyAnswer, parseBackup, nextRx, shiftRx } from './logic.js';
+import { DAY, d2n, n2d, localToday, compute, buildMap, planNotifications, applyAnswer, parseBackup, normalizeState, nextRx, shiftRx } from './logic.js';
 import { strings, pickLang } from './i18n.js';
 
 // Material Symbols (stile rounded): esbuild li include come testo SVG
@@ -76,8 +76,10 @@ async function load() {
   try {
     const { value } = await Preferences.get({ key: STORE_KEY });
     if (!value) return EMPTY();
-    const d = JSON.parse(value), s = d.settings || {};
-    return { blisters: Array.isArray(d.blisters) ? d.blisters : [], lastNo: d.lastNo || null, settings: { time: s.time || '09:00', rx: s.rx || null, lang: s.lang || 'auto' } };
+    // Damaged packs are skipped so the rest of the diary still opens; the user is told to check the history.
+    const { state: d, dropped } = normalizeState(JSON.parse(value));
+    if (dropped) showErr(T.err.repaired);
+    return d;
   } catch (e) {
     showErr(T.err.load);
     return EMPTY();

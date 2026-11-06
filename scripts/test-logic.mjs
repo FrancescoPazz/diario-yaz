@@ -1,6 +1,6 @@
 // Test dei calcoli del blister: node scripts/test-logic.mjs (oppure npm test)
 import assert from 'node:assert/strict';
-import { d2n, n2d, compute, buildMap, planNotifications, applyAnswer, parseBackup, KIND, nextRx, shiftRx } from '../src/logic.js';
+import { d2n, n2d, compute, buildMap, planNotifications, applyAnswer, parseBackup, normalizeState, KIND, nextRx, shiftRx } from '../src/logic.js';
 import { strings, pickLang } from '../src/i18n.js';
 
 const at = (st, day) => compute(st, d2n(day));
@@ -67,6 +67,21 @@ assert.equal(n2d(nextRx({ ...base, settings: { time: '09:00', rx: shiftRx(moved,
 assert.deepEqual(parseBackup(JSON.stringify(skipped)).blisters, skipped.blisters);
 assert.equal(parseBackup(JSON.stringify(moved)).settings.rx, moved.settings.rx);
 assert.throws(() => parseBackup('{}'), { message: 'list' });
+assert.throws(() => parseBackup('{"blisters":[{"start":"2026-02-30"}]}'), { message: 'date' });   // not a real day
+assert.throws(() => parseBackup('{"blisters":[{"start":"2026-10-12"},{"start":"2026-10-12"}]}'), { message: 'dup' });
+assert.equal(parseBackup('{"blisters":[],"settings":{"time":"25:00","lang":"fr"}}').settings.time, '09:00');
+
+// Saved data read on startup: broken entries are dropped instead of breaking the calendar, the rest is kept.
+let loaded = normalizeState({ blisters: [{ start: '2026-10-12', placebo: true }, null, { start: 'abc' }, { start: '2026-11-09' },
+  { start: '2026-11-09', placebo: true }, { placebo: false }], lastNo: 'yesterday', settings: { time: '7:5', rx: '2026-11-29', lang: 'en' } });
+assert.deepEqual(loaded.state.blisters, [{ start: '2026-10-12', placebo: true }, { start: '2026-11-09', placebo: null }]);
+assert.equal(loaded.dropped, 4);
+assert.deepEqual(loaded.state.settings, { time: '09:00', rx: '2026-11-29', lang: 'en' });
+assert.equal(loaded.state.lastNo, null);
+assert.ok(compute(loaded.state, d2n('2026-11-10')));
+loaded = normalizeState(skipped);
+assert.deepEqual(loaded, { state: { ...skipped, settings: { time: '09:00', rx: null, lang: 'auto' } }, dropped: 0 });
+assert.deepEqual(normalizeState(null), { state: { blisters: [], lastNo: null, settings: { time: '09:00', rx: null, lang: 'auto' } }, dropped: 0 });
 
 // Lingue: italiano e inglese hanno le stesse chiavi; senza scelta si segue il telefono (italiano solo se è in italiano).
 const it = strings('it'), en = strings('en');

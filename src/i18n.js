@@ -126,6 +126,7 @@ const TEXT = {
 
     err: {
       load: 'Non riesco a leggere i dati salvati. Se hai un backup puoi reimportarlo.',
+      repaired: 'Alcuni blister salvati erano danneggiati e sono stati ignorati. Controlla lo storico.',
       save: 'Salvataggio non riuscito. Riprova.',
       notifOff: 'Le notifiche sono disattivate. Puoi attivarle da Impostazioni Android › App › Diario Yaz › Notifiche.',
       answer: 'Non riesco a registrare questa risposta. Controlla le date nello storico.',
@@ -141,6 +142,7 @@ const TEXT = {
       json: 'Il testo incollato non è un backup valido.',
       list: 'Nel backup manca l\'elenco dei blister.',
       date: 'Il backup contiene una data non valida.',
+      dup: 'Il backup contiene due blister con la stessa data di inizio.',
     },
     answered: {
       placebo: 'Registrato: hai cominciato le placebo.',
@@ -289,6 +291,7 @@ const TEXT = {
 
     err: {
       load: 'I can\'t read the saved data. If you have a backup, you can import it again.',
+      repaired: 'Some saved packs were damaged and have been ignored. Check the history.',
       save: 'Saving failed. Try again.',
       notifOff: 'Notifications are off. You can turn them on in Android Settings › Apps › Diario Yaz › Notifications.',
       answer: 'I can\'t save this answer. Check the dates in the history.',
@@ -304,6 +307,7 @@ const TEXT = {
       json: 'The pasted text isn\'t a valid backup.',
       list: 'The backup has no list of packs.',
       date: 'The backup contains an invalid date.',
+      dup: 'The backup contains two packs with the same start date.',
     },
     answered: {
       placebo: 'Saved: you started the placebos.',
