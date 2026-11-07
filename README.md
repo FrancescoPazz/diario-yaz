@@ -158,9 +158,19 @@ in every other case. Switching language also reschedules the notifications with 
 <details>
 <summary><b>Signing</b></summary>
 
-`android/app/diario-yaz.keystore` signs both debug and release builds. Its password (`diarioyaz`) is written in
-`android/app/build.gradle`, which is why the repository has to stay private. If the key changes, Android refuses the
-update: the app has to be uninstalled and the data is lost unless you have a backup.
+`android/app/build.gradle` signs debug and release builds with the app's own key, which is **not** stored in the
+repository. On GitHub, the workflow reads it from four repository secrets (Settings › Secrets and variables › Actions):
+
+| Secret | Content |
+|---|---|
+| `DIARIOYAZ_KEYSTORE_BASE64` | the keystore file encoded in base64 (`base64 -w0 diario-yaz.keystore`) |
+| `DIARIOYAZ_STORE_PASSWORD` | the keystore password |
+| `DIARIOYAZ_KEY_ALIAS` | the key alias |
+| `DIARIOYAZ_KEY_PASSWORD` | the key password |
+
+To build a signed APK on your computer, create `android/keystore.properties` (ignored by git) with `storeFile` (path relative to `android/app`),
+`storePassword`, `keyAlias` and `keyPassword`. Without it, local builds use Android's standard debug key. If the key
+changes, Android refuses the update: the app has to be uninstalled and the data is lost unless you have a backup.
 
 </details>
 
