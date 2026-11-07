@@ -2,6 +2,35 @@
 
 Newest entries first.
 
+## 2026-11-07 — Update Capacitor and dev dependencies
+
+**What:** dependency update, no app code changes.
+- `@capacitor/core`, `@capacitor/android`, `@capacitor/cli`: 8.5.3 → 8.6.0
+- `@capacitor/assets` (dev, used by `npm run icons`): 3.0.5 → 4.0.0
+- `@material-symbols/svg-400` (dev): 0.48.0 → 0.48.3
+- `npm audit fix` for transitive dev packages (`glob`, `minimatch`, `rimraf`)
+
+The other plugins (`app`, `local-notifications`, `preferences`) and `esbuild` were already on their latest 8.x / 0.28
+releases. The Android library's `build.gradle` in 8.6.0 uses the same SDK levels (min 24, compile/target 36), AndroidX
+versions and Java 21 as 8.5.3, so `android/variables.gradle` needs no change.
+
+**Why:** stay current with the Capacitor 8 line and clear the `npm audit` findings: before, 10 vulnerabilities
+(1 critical `tar` and 3 high `sharp`/libvips, all pulled in by `@capacitor/assets` 3.x); after, 4 moderate. The remaining
+four are all `uuid` < 11.1.1 via `xcode` → `@trapezedev/project` → `@capacitor/assets`, an iOS project helper that is
+dev-only, not shipped in the APK, and has no non-breaking fix yet. None of these packages are part of the app bundle.
+
+**Files:** `package.json`, `package-lock.json`.
+
+**Checks:**
+- `npm ci` (clean `node_modules`): ok
+- `npm test`: ok
+- `npm run build`: ok
+- `npx cap sync android`: ok, 3 plugins found
+- `npm run icons` with `@capacitor/assets` 4.0.0: ok, 74 Android assets generated (output discarded, the committed
+  icons are unchanged)
+- Browser check with Playwright on `www/index.html`: no page or console errors, first-run screen renders.
+- `./gradlew assembleDebug`: not run, the Android SDK is not available in this environment (Java is).
+
 ## 2026-11-06 — Validate saved data on startup
 
 **What:** the data read from the phone at startup now goes through a new `normalizeState()` in `src/logic.js`, which
