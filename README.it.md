@@ -159,9 +159,19 @@ gli altri casi. Cambiando lingua anche le notifiche vengono riprogrammate con i 
 <details>
 <summary><b>Firma</b></summary>
 
-`android/app/diario-yaz.keystore` firma sia le build di debug sia quelle di release. La password (`diarioyaz`) è
-scritta in `android/app/build.gradle`, ed è il motivo per cui il repository deve restare privato. Se la chiave cambia,
-Android rifiuta l'aggiornamento: l'app va disinstallata e i dati si perdono, a meno di averne fatto un backup.
+`android/app/build.gradle` firma le build di debug e di release con la chiave dell'app, che **non** è nel repository.
+Su GitHub il workflow la legge da quattro secret del repository (Settings › Secrets and variables › Actions):
+
+| Secret | Contenuto |
+|---|---|
+| `DIARIOYAZ_KEYSTORE_BASE64` | il file keystore codificato in base64 (`base64 -w0 diario-yaz.keystore`) |
+| `DIARIOYAZ_STORE_PASSWORD` | la password del keystore |
+| `DIARIOYAZ_KEY_ALIAS` | l'alias della chiave |
+| `DIARIOYAZ_KEY_PASSWORD` | la password della chiave |
+
+Per un APK firmato sul computer, crea `android/keystore.properties` (escluso da git) con `storeFile` (percorso relativo a `android/app`), `storePassword`,
+`keyAlias` e `keyPassword`. Senza quel file le build locali usano la chiave di debug standard di Android. Se la chiave
+cambia, Android rifiuta l'aggiornamento: l'app va disinstallata e i dati si perdono, a meno di averne fatto un backup.
 
 </details>
 
