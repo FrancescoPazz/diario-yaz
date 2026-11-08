@@ -216,6 +216,7 @@ h1, h2, h3, p { margin: 0; }
 /* ---------- elenchi ---------- */
 .list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 16px; min-height: 64px; padding: 8px 0; }
+.li-acts { display: flex; gap: 4px; }
 .li-h { font-size: 16px; line-height: 24px; }
 .li-s { font-size: 14px; line-height: 20px; color: var(--md-sys-color-on-surface-variant); }
 .li-t { font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: .04em; color: var(--md-sys-color-on-surface-variant); text-align: right; white-space: nowrap; }

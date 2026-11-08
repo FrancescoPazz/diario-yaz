@@ -32,6 +32,7 @@ import translate from '@material-symbols/svg-400/rounded/translate.svg';
 import checkCircle from '@material-symbols/svg-400/rounded/check_circle.svg';
 import skipNext from '@material-symbols/svg-400/rounded/skip_next.svg';
 import del from '@material-symbols/svg-400/rounded/delete.svg';
+import edit from '@material-symbols/svg-400/rounded/edit.svg';
 import add from '@material-symbols/svg-400/rounded/add.svg';
 import check from '@material-symbols/svg-400/rounded/check.svg';
 import contentCopy from '@material-symbols/svg-400/rounded/content_copy.svg';
@@ -39,7 +40,7 @@ import contentPaste from '@material-symbols/svg-400/rounded/content_paste.svg';
 
 const ICONS = { today, todayFill, calendarMonth, calendarMonthFill, history, historyFill, settings, settingsFill, chevronLeft, chevronRight,
   waterDrop, pill, prescriptions, eventRepeat, eventBusy, snooze, schedule, notifications, notificationsOff, alarm, backup, translate,
-  checkCircle, skipNext, del, add, check, contentCopy, contentPaste };
+  checkCircle, skipNext, del, edit, add, check, contentCopy, contentPaste };
 const icon = name => ICONS[name].replace('<svg', '<svg class="i" aria-hidden="true" focusable="false"');
 
 const NATIVE = Capacitor.isNativePlatform();
@@ -50,7 +51,7 @@ const TABS = [['oggi', 'today'], ['calendario', 'calendarMonth'], ['storico', 'h
 
 let state = null;
 let T = strings(pickLang('auto', navigator.language));
-let ui = { tab: 'oggi', month: null, calDay: null, pickDate: false, dialog: null, delStart: null };
+let ui = { tab: 'oggi', month: null, calDay: null, pickDate: false, dialog: null, delStart: null, editStart: null };
 let shownTab = null;
 let notif = { display: 'unknown', exact: 'unknown' };
 
@@ -211,13 +212,19 @@ const actions = {
   monthToday() { ui.month = null; ui.calDay = null; render(); },
   calDay(el) { ui.calDay = Number(el.dataset.n); render(); },
   closeDialog,
-  addOpen() { openDialog('add'); },
+  addOpen() { ui.editStart = null; openDialog('add'); },
+  // The same sheet adds a new pack or, with ui.editStart set, changes the start date and placebo outcome of a recorded one.
+  edit(el) { ui.editStart = el.dataset.start; openDialog('add'); },
   addSave() {
     const v = $('add-date').value, o = document.querySelector('[name=add-out]:checked').value;
     if (!v) return showErr(T.err.addDate);
-    if (state.blisters.some(b => b.start === v)) return showErr(T.err.dup);
+    if (state.blisters.some(b => b.start === v && b.start !== ui.editStart)) return showErr(T.err.dup);
     if (d2n(v) > d2n(localToday())) return showErr(T.err.future);
-    state.blisters.push({ start: v, placebo: o === 'placebo' ? true : o === 'skip' ? false : null }); ui.dialog = null; persist();
+    const pack = { start: v, placebo: o === 'placebo' ? true : o === 'skip' ? false : null };
+    if (ui.editStart) state.blisters = state.blisters.map(b => (b.start === ui.editStart ? pack : b));
+    else state.blisters.push(pack);
+    const edited = ui.editStart; ui.dialog = null; ui.editStart = null; persist();
+    if (edited) toast(T.edited);
   },
   del(el) { ui.delStart = el.dataset.start; openDialog('del'); },
   delYes() {
@@ -483,7 +490,8 @@ function historyView() {
         : ['pill', 'primary', T.histOpen(period)];
     return `<li class="li"><span class="av ${tone}">${icon(ic)}</span>
       <div><div class="li-h">${T.fmtFull(s)}</div><div class="li-s">${sub}</div></div>
-      <button class="icon-btn" data-a="del" data-start="${b.start}" aria-label="${T.delAria(T.fmt(s))}">${icon('del')}</button></li>`;
+      <div class="li-acts"><button class="icon-btn" data-a="edit" data-start="${b.start}" aria-label="${T.editAria(T.fmt(s))}">${icon('edit')}</button>
+      <button class="icon-btn" data-a="del" data-start="${b.start}" aria-label="${T.delAria(T.fmt(s))}">${icon('del')}</button></div></li>`;
   }).join('');
   return `<section class="card"><ul class="list">${rows}</ul></section>
     <button class="fab" data-a="addOpen">${icon('add')}${T.add}</button>`;
@@ -511,13 +519,15 @@ function settingsView(m) {
 function dialogView() {
   if (ui.dialog === 'add') {
     const opts = [['placebo', T.optTaken], ['skip', T.optSkipped], ['open', T.optOpen]];
+    const cur = ui.editStart && state.blisters.find(b => b.start === ui.editStart);
+    const sel = !cur ? 'placebo' : cur.placebo === true ? 'placebo' : cur.placebo === false ? 'skip' : 'open';
     return `<dialog id="dlg" class="sheet" aria-labelledby="dlg-t"><div><div class="handle"></div><div class="dlg-body">
-      <h2 id="dlg-t" class="headline-s">${T.addTitle}</h2>
-      <label class="field"><span>${T.firstPill}</span><input type="date" class="input" id="add-date" max="${localToday()}"></label>
-      <fieldset class="seg"><legend>${T.placeboLegend}</legend><div class="seg-row">${opts.map(([v, l], i) =>
-        `<label><input type="radio" name="add-out" value="${v}"${i ? '' : ' checked'}><span class="seg-in">${icon('check')}${l}</span></label>`).join('')}</div></fieldset>
+      <h2 id="dlg-t" class="headline-s">${cur ? T.editTitle : T.addTitle}</h2>
+      <label class="field"><span>${T.firstPill}</span><input type="date" class="input" id="add-date" max="${localToday()}"${cur ? ` value="${esc(cur.start)}"` : ''}></label>
+      <fieldset class="seg"><legend>${T.placeboLegend}</legend><div class="seg-row">${opts.map(([v, l]) =>
+        `<label><input type="radio" name="add-out" value="${v}"${v === sel ? ' checked' : ''}><span class="seg-in">${icon('check')}${l}</span></label>`).join('')}</div></fieldset>
       <p class="dlg-err" hidden></p>
-      <div class="actions-end"><button class="btn text" data-a="closeDialog">${T.cancel}</button><button class="btn filled" data-a="addSave">${T.add}</button></div>
+      <div class="actions-end"><button class="btn text" data-a="closeDialog">${T.cancel}</button><button class="btn filled" data-a="addSave">${cur ? T.save : T.add}</button></div>
     </div></div></dialog>`;
   }
   if (ui.dialog === 'del') {

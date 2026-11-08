@@ -78,6 +78,8 @@ const TEXT = {
     histSkipped: d => `Placebo saltate · ciclo saltato ${d}`,
     histOpen: d => `In corso · ciclo previsto ${d}`,
     delAria: d => `Elimina il blister del ${d}`,
+    editAria: d => `Modifica il blister del ${d}`,
+    edited: 'Blister modificato. Le date previste sono state ricalcolate.',
     add: 'Aggiungi',
 
     time: 'Orario dei promemoria',
@@ -103,6 +105,7 @@ const TEXT = {
     note: 'Il ciclo previsto è il giorno della quarta placebo (giorno 28 del blister). Se salti le placebo e inizi subito un nuovo blister, il conteggio riparte da quel giorno e quel mese il ciclo salta. Le previsioni non sostituiscono le indicazioni del medico o del foglietto illustrativo.',
 
     addTitle: 'Aggiungi un blister',
+    editTitle: 'Modifica il blister',
     placeboLegend: 'Placebo',
     optTaken: 'Prese',
     optSkipped: 'Saltate',
@@ -243,6 +246,8 @@ const TEXT = {
     histSkipped: d => `Placebos skipped · period skipped ${d}`,
     histOpen: d => `In progress · period due ${d}`,
     delAria: d => `Delete the pack started on ${d}`,
+    editAria: d => `Edit the pack started on ${d}`,
+    edited: 'Pack updated. The expected dates have been recalculated.',
     add: 'Add',
 
     time: 'Reminder time',
@@ -268,6 +273,7 @@ const TEXT = {
     note: 'The expected period is the day of the fourth placebo (day 28 of the pack). If you skip the placebos and start a new pack straight away, the count restarts from that day and you skip that month\'s period. These forecasts do not replace your doctor\'s advice or the package leaflet.',
 
     addTitle: 'Add a pack',
+    editTitle: 'Edit the pack',
     placeboLegend: 'Placebos',
     optTaken: 'Taken',
     optSkipped: 'Skipped',

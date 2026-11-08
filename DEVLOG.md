@@ -2,6 +2,31 @@
 
 Newest entries first.
 
+## 2026-11-08 — Edit a recorded pack in History
+
+**What:** each pack in History now has an edit button next to the delete one. It opens the same sheet used to add a
+pack, titled "Edit the pack", with the start date and placebo outcome (taken / skipped / not yet) already filled in.
+Saving replaces that pack, with the same checks as adding (date required, not in the future, not the start date of
+another pack), then the expected dates and reminders are recalculated and a snackbar confirms the change.
+
+**Why:** first item of the roadmap. Fixing a wrong date or outcome meant deleting the pack and adding it again, which is
+easy to get wrong and briefly changes the forecast. No calculation in `src/logic.js` changed; the edit only rewrites the
+saved pack and the existing `persist()` sorts and reschedules as before.
+
+**Files:** `src/app.js` (`edit` action, `ui.editStart`, edit mode for the add sheet, row actions), `src/i18n.js`
+(`editAria`, `editTitle`, `edited` in Italian and English), `src/styles.css` (`.li-acts`), `README.md`, `README.it.md`,
+`ROADMAP.md`.
+
+**Checks:**
+- `npm ci`: ok
+- `npm test`: ok (key parity covers the three new strings)
+- `npm run build`: ok
+- `npm run sync`: ok
+- Browser check with Playwright on `www/index.html` (light and dark): sheet prefilled with the pack's date and outcome,
+  duplicate date rejected inside the sheet, edited pack saved and re-sorted, snackbar shown, "Add" still opens an empty
+  sheet afterwards, no page or console errors.
+- `./gradlew assembleDebug`: not run, the Android SDK is not available in this environment (Java is).
+
 ## 2026-11-07 — Update Capacitor and dev dependencies
 
 **What:** dependency update, no app code changes.
