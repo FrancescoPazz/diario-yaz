@@ -63,6 +63,56 @@ assert.equal(n2d(nextRx(moved, m)), '2026-11-01');    // primo blister: oggi è 
 assert.ok(has(planNotifications(moved, m.t), KIND.RX, '2026-12-27'));
 assert.equal(n2d(nextRx({ ...base, settings: { time: '09:00', rx: shiftRx(moved, m) } }, m)), '2026-11-29');
 
+// Calendar map: a late pack leaves "gap" days counted from the day after day 28; a pack recorded early cuts the
+// previous one short; a skipped placebo marks day 24 as the end of that pack.
+const taken = { ...base, blisters: [{ start: '2026-10-12', placebo: true }] };
+const day = (map, s) => map.get(d2n(s));
+let map = buildMap(at(taken, '2026-11-11'));                 // no new pack yet, two days late
+assert.ok(day(map, '2026-11-08').period);
+assert.deepEqual(day(map, '2026-11-09'), { kind: 'gap', late: 1, proj: false });
+assert.deepEqual(day(map, '2026-11-10'), { kind: 'gap', late: 2, proj: false });
+assert.ok(day(map, '2026-11-11').start && day(map, '2026-11-11').proj);   // expected today
+map = buildMap(at({ ...taken, lastNo: '2026-11-11' }, '2026-11-11'));      // "No" today: expected tomorrow
+assert.deepEqual(day(map, '2026-11-11'), { kind: 'gap', late: 3, proj: false });
+assert.ok(day(map, '2026-11-12').start);
+map = buildMap(at({ ...taken, blisters: [...taken.blisters, { start: '2026-11-11', placebo: null }] }, '2026-11-20'));
+assert.equal(day(map, '2026-11-10').late, 2);
+assert.deepEqual([day(map, '2026-11-11').day, day(map, '2026-11-11').start, day(map, '2026-11-11').proj], [1, true, false]);
+map = buildMap(at({ ...taken, blisters: [...taken.blisters, { start: '2026-11-01', placebo: null }] }, '2026-11-05'));
+assert.equal(day(map, '2026-10-31').day, 20);
+assert.equal(day(map, '2026-11-01').day, 1);
+map = buildMap(at(skipped, '2026-11-05'));
+assert.ok(day(map, '2026-11-04').skipend);
+assert.equal(day(map, '2026-11-04').day, 24);
+assert.equal(day(map, '2026-11-05').day, 1);
+
+// Reminders stay between today and the horizon; after "No" the new-pack question moves from today to tomorrow
+// and keeps pointing at the original expected day.
+plan = planNotifications(taken, d2n('2026-11-01'), 10);
+assert.ok(plan.length && plan.every(p => p.n >= d2n('2026-11-01') && p.n <= d2n('2026-11-11')));
+assert.ok(!has(plan, KIND.RX, '2026-11-29'));
+plan = planNotifications(taken, d2n('2026-11-01'));
+assert.ok(plan.every(p => p.n >= d2n('2026-11-01') && p.n <= d2n('2026-11-01') + 100));
+plan = planNotifications(taken, d2n('2026-11-10'));                  // day 28 (period) is already past
+assert.ok(!has(plan, KIND.PERIOD, '2026-11-08') && plan.every(p => p.n >= d2n('2026-11-10')));
+const packQ = st => planNotifications(st, d2n('2026-11-09')).filter(p => p.kind === KIND.BLISTER_Q && p.blisterStart === '2026-10-12')
+  .map(p => [n2d(p.n), p.expected === null ? null : n2d(p.expected)]);
+assert.deepEqual(packQ(taken), [['2026-11-09', null], ['2026-11-10', '2026-11-09'], ['2026-11-11', '2026-11-09'], ['2026-11-12', '2026-11-09']]);
+assert.deepEqual(packQ({ ...taken, lastNo: '2026-11-09' }).map(x => x[0]), ['2026-11-10', '2026-11-11', '2026-11-12', '2026-11-13']);
+
+// Answers: a new pack on day 25 means the placebo was skipped; answers for another pack, before day 25 or unknown are
+// ignored; "No" only remembers the day; the input state is never changed.
+const frozen = JSON.stringify(base);
+assert.deepEqual(applyAnswer(base, 'yes', '2026-10-12', '2026-11-05').blisters.map(b => [b.start, b.placebo]),
+  [['2026-10-12', false], ['2026-11-05', null]]);
+assert.equal(applyAnswer(base, 'yes', '2026-10-12', '2026-11-04'), null);
+assert.equal(applyAnswer(base, 'placebo', '2026-09-14', '2026-11-05'), null);
+assert.equal(applyAnswer(base, 'maybe', '2026-10-12', '2026-11-05'), null);
+assert.deepEqual(applyAnswer(base, 'no', '2026-10-12', '2026-11-09'), { ...base, lastNo: '2026-11-09' });
+assert.equal(applyAnswer(placebo, 'skip', '2026-10-12', '2026-11-05'), null);
+assert.equal(applyAnswer({ ...base, blisters: [] }, 'yes', '2026-10-12', '2026-11-09'), null);
+assert.equal(JSON.stringify(base), frozen);
+
 // Backup.
 assert.deepEqual(parseBackup(JSON.stringify(skipped)).blisters, skipped.blisters);
 assert.equal(parseBackup(JSON.stringify(moved)).settings.rx, moved.settings.rx);

@@ -2,6 +2,30 @@
 
 Newest entries first.
 
+## 2026-11-09 — More tests for the pack, calendar and reminder calculations
+
+**What:** new tests in `scripts/test-logic.mjs`, no app code changes.
+- `buildMap`: "gap" days of a late pack (counted from the day after day 28, not projected), the expected start moving
+  to tomorrow after "No", a pack started late keeping its real start, a pack recorded early cutting the previous one
+  short, and day 24 marked as the end of a pack whose placebo was skipped.
+- `planNotifications`: every reminder falls between today and the horizon (also when day 28 is already past), and after
+  "No" the new-pack question moves from today to tomorrow while still pointing at the original expected day.
+- `applyAnswer`: a new pack on day 25 records the placebo as skipped; answers for another pack, before day 25, unknown
+  or with no packs are ignored; "No" only stores the day; the input state is not modified.
+
+**Why:** first item of the roadmap. These paths drive the calendar colours and the scheduled reminders but were only
+covered indirectly. Each new block was checked by temporarily breaking the matching line in `src/logic.js` (gap count
+off by one, no lower bound on reminders, day-25 check, gap end after "No"): all four mutations make `npm test` fail.
+`src/logic.js` itself is unchanged; no bug was found.
+
+**Files:** `scripts/test-logic.mjs`, `DEVLOG.md`, `ROADMAP.md`.
+
+**Checks:**
+- `npm ci`: ok
+- `npm test`: ok
+- `npm run build`: ok
+- `./gradlew assembleDebug`: not run, the Android SDK is not available in this environment (Java is).
+
 ## 2026-11-08 — Edit a recorded pack in History
 
 **What:** each pack in History now has an edit button next to the delete one. It opens the same sheet used to add a
