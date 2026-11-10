@@ -2,6 +2,31 @@
 
 Newest entries first.
 
+## 2026-11-10 — Swipe between months in the calendar
+
+**What:** a horizontal swipe on the calendar grid now changes month: swipe left for the next month, right for the
+previous one. A gesture counts as a swipe when it moves at least 48 px sideways, mostly horizontally (|dx| > 1.5 |dy|)
+and within 800 ms, so vertical scrolling and taps on a day behave as before. The grid slides in from the side of the
+new month (250 ms, also when using the arrows); the animation is off when the system asks for reduced motion. The
+calendar card clips horizontally so the slide never widens the page.
+
+**Why:** first item of the roadmap. On a phone the arrows sit in the top corner; a swipe is the expected shortcut. No
+calculation changed and the arrows still work as before (and remain the accessible way to change month).
+
+**Files:** `src/app.js` (`goMonth`, `calSlide`, passive touch listeners), `src/styles.css` (`touch-action: pan-y` on the
+grid, `.cal-card` clip, `slide-next` / `slide-prev` animations inside the reduced-motion media query), `README.md`,
+`README.it.md`, `DEVLOG.md`, `ROADMAP.md`.
+
+**Checks:**
+- `npm ci`: ok
+- `npm test`: ok
+- `npm run build`: ok
+- `npm run sync`: ok
+- Browser check with Playwright on `www/index.html`, Pixel 7 emulation with real touch events (light and dark): swipe
+  left → next month, swipe right → previous month, a mostly vertical drag doesn't change month, arrows still work and
+  animate, tapping a day still selects it, no horizontal page overflow, no page or console errors.
+- `./gradlew assembleDebug`: not run, the Android SDK is not available in this environment (Java is).
+
 ## 2026-11-09 — More tests for the pack, calendar and reminder calculations
 
 **What:** new tests in `scripts/test-logic.mjs`, no app code changes.

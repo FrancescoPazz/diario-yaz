@@ -53,6 +53,7 @@ let state = null;
 let T = strings(pickLang('auto', navigator.language));
 let ui = { tab: 'oggi', month: null, calDay: null, pickDate: false, dialog: null, delStart: null, editStart: null };
 let shownTab = null;
+let calSlide = null;   // 'next' | 'prev': direction of the month change to animate on the next render
 let notif = { display: 'unknown', exact: 'unknown' };
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -207,8 +208,8 @@ const actions = {
     if (d2n(v) <= d2n(lastB().start) + 23) return showErr(T.err.after24);
     answer('yes', v);
   },
-  monthPrev() { ui.month = shiftMonth(ui.month, -1); ui.calDay = null; render(); },
-  monthNext() { ui.month = shiftMonth(ui.month, 1); ui.calDay = null; render(); },
+  monthPrev() { goMonth(-1); },
+  monthNext() { goMonth(1); },
   monthToday() { ui.month = null; ui.calDay = null; render(); },
   calDay(el) { ui.calDay = Number(el.dataset.n); render(); },
   closeDialog,
@@ -262,6 +263,7 @@ const actions = {
     catch (e) { showErr(T.backupErr[e.message] || T.backupErr.json); }
   },
 };
+function goMonth(k) { ui.month = shiftMonth(ui.month, k); ui.calDay = null; calSlide = k > 0 ? 'next' : 'prev'; render(); }
 function shiftMonth(m, k) { const t = new Date(); let [y, mo] = m || [t.getFullYear(), t.getMonth()]; mo += k; y += Math.floor(mo / 12); mo = ((mo % 12) + 12) % 12; return [y, mo]; }
 
 document.addEventListener('click', e => {
@@ -279,6 +281,19 @@ document.addEventListener('change', async e => {
     await registerNotificationTexts(); persist();     // persist riprogramma le notifiche con i nuovi testi
   }
 });
+// Horizontal swipe on the calendar grid changes month (left = next, right = previous)
+let swipe = null;
+document.addEventListener('touchstart', e => {
+  const cal = e.target.closest && e.target.closest('.cal');
+  swipe = cal && e.touches.length === 1 ? { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() } : null;
+}, { passive: true });
+document.addEventListener('touchend', e => {
+  if (!swipe) return;
+  const p = e.changedTouches[0], dx = p.clientX - swipe.x, dy = p.clientY - swipe.y, dt = Date.now() - swipe.t;
+  swipe = null;
+  if (dt < 800 && Math.abs(dx) >= 48 && Math.abs(dx) > Math.abs(dy) * 1.5) goMonth(dx < 0 ? 1 : -1);
+}, { passive: true });
+document.addEventListener('touchcancel', () => { swipe = null; }, { passive: true });
 document.addEventListener('close', e => { if (e.target.id === 'dlg') ui.dialog = null; }, true);   // chiusa con Esc
 
 /* ---------- interfaccia ---------- */
@@ -413,6 +428,7 @@ function nextView(m) {
 }
 
 function calendarView(m) {
+  const slide = calSlide; calSlide = null;
   const now = new Date();
   const [y, mo] = ui.month || [now.getFullYear(), now.getMonth()];
   const map = buildMap(m);
@@ -457,11 +473,11 @@ function calendarView(m) {
     ? `<strong>${esc(dHead)}</strong><span>${esc(dText.charAt(0).toUpperCase() + dText.slice(1))}</span>`
     : `<span class="muted">${C.hint}</span>`}</p>`;
   const lg = T.legend;
-  return `<section class="card">
+  return `<section class="card cal-card">
     <div class="card-head cal-head"><h2 class="title-l">${T.monthTitle(first)}</h2>
       <div class="row" style="gap:0">${away ? `<button class="btn text" data-a="monthToday">${T.todayBtn}</button>` : ''}<button class="icon-btn" data-a="monthPrev" aria-label="${T.prevMonth}">${icon('chevronLeft')}</button><button class="icon-btn" data-a="monthNext" aria-label="${T.nextMonth}">${icon('chevronRight')}</button></div>
     </div>
-    <div class="cal">${cells}</div>
+    <div class="cal${slide ? ' slide-' + slide : ''}">${cells}</div>
     ${dayDetail}
     <div class="legend">
       <span><i class="a"></i>${lg[0]}</span><span><i class="p"></i>${lg[1]}</span>

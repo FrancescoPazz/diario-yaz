@@ -227,8 +227,9 @@ h1, h2, h3, p { margin: 0; }
 .av.neutral { background: var(--md-sys-color-surface-container-highest); color: var(--md-sys-color-on-surface-variant); }
 
 /* ---------- calendario ---------- */
+.cal-card { overflow-x: clip; }   /* keeps the month slide from widening the page */
 .cal-head h2::first-letter { text-transform: uppercase; }
-.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); row-gap: 2px; }
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); row-gap: 2px; touch-action: pan-y; }
 .dow { text-align: center; font-size: 12px; line-height: 32px; font-weight: 500; color: var(--md-sys-color-on-surface-variant); }
 .d { position: relative; height: 48px; display: grid; place-items: center; padding: 0; border: 0; background: none; width: 100%; -webkit-tap-highlight-color: transparent; }
 .d:focus-visible { outline: none; }
@@ -339,6 +340,8 @@ dialog::backdrop { background: rgb(0 0 0 / .32); }
   .sheet[open] { animation: sheet-in 450ms var(--ease-emph-dec); }
   .dlg[open] { animation: dlg-in 300ms var(--ease-emph-dec); }
   dialog[open]::backdrop { animation: fade 300ms linear; }
+  .cal.slide-next { animation: slide-next 250ms var(--ease-emph-dec); }
+  .cal.slide-prev { animation: slide-prev 250ms var(--ease-emph-dec); }
 }
 @media (prefers-reduced-motion: reduce) {
   .btn, .icon-btn, .fab, .nav-ind::after { transition: none; }
@@ -348,3 +351,5 @@ dialog::backdrop { background: rgb(0 0 0 / .32); }
 @keyframes sheet-in { from { transform: translateY(100%); } }
 @keyframes dlg-in { from { opacity: 0; transform: scale(.9); } }
 @keyframes fade { from { opacity: 0; } }
+@keyframes slide-next { from { opacity: 0; transform: translateX(32px); } }
+@keyframes slide-prev { from { opacity: 0; transform: translateX(-32px); } }
