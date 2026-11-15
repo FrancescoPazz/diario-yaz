@@ -2,10 +2,10 @@
 
 Ideas for the next changes, most useful first. Each one should be a small, reviewable change.
 
-1. **Undo after deleting a pack** — a snackbar with an "Undo" action that restores the deleted pack, so a mistaken tap
-   doesn't need a manual re-add.
-2. **Accessibility pass** — check contrast of the legend's small dots, focus order in dialogs and TalkBack labels on the
+1. **Accessibility pass** — check contrast of the legend's small dots, focus order in dialogs and TalkBack labels on the
    Today pack; announce the new month to screen readers after a month change.
+2. **Snackbar above the FAB** — in History the snackbar covers the lower part of the "Add" button; lift the FAB (or
+   place the snackbar above it) while a message is showing.
 3. **Keep a copy of unreadable saved data** — when the stored JSON can't be parsed at all, keep the raw text under a
    separate key so it isn't overwritten by the next save and can be recovered via backup.
 4. **Warn about overlapping packs** — when adding or editing a pack whose start falls inside the previous pack's 24

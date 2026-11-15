@@ -2,6 +2,35 @@
 
 Newest entries first.
 
+## 2026-11-15 — Undo after deleting a pack
+
+**What:** after confirming the deletion of a pack in History, the snackbar now says "Pack deleted." with an "Undo" text
+button. Tapping it puts back the packs exactly as they were (including a skipped placebo that the delete had reset to
+"not yet"), saves, reschedules the reminders and shows "Pack restored.". The snackbar with an action stays 8 s instead
+of 4.5 s so the button can be reached. Any other change to the diary while it is showing (adding or editing a pack, an
+answer from a notification, another delete) removes the button, so an old copy can never overwrite newer data. Deleting
+the last pack also works: the setup screen appears and "Undo" brings the pack back. The button uses a new
+`inverse-primary` colour token (light and dark) on the inverse surface, as in Material 3 snackbars.
+
+**Why:** first item of the roadmap. A mistaken tap on "Delete" meant re-adding the pack by hand with the right date and
+placebo outcome. No calculation in `src/logic.js` changed.
+
+**Files:** `src/app.js` (`toast` with an optional action, `undo`, `dropUndo` called from `persist`, `delYes`,
+`undoDel`), `src/i18n.js` (`deleted`, `undo`, `restored` in Italian and English), `src/styles.css`
+(`--md-sys-color-inverse-primary`, `.snackbar.with-action`, `.snack-txt`, `.snack-btn`), `README.md`, `README.it.md`,
+`DEVLOG.md`, `ROADMAP.md`.
+
+**Checks:**
+- `npm ci`: ok
+- `npm test`: ok (key parity covers the three new strings)
+- `npm run build`: ok
+- `npm run sync`: ok
+- Browser check with Playwright on `www/index.html`, Pixel 7 emulation (light and dark): delete → snackbar with "Undo";
+  undo restores the pack in the list and in saved storage; after an edit the button is gone; deleting every pack shows
+  the setup screen and undo restores the pack from there; snackbar hides after 8 s; no horizontal overflow, no page or
+  console errors.
+- `./gradlew assembleDebug`: not run, the Android SDK is not available in this environment (Java is).
+
 ## 2026-11-10 — Swipe between months in the calendar
 
 **What:** a horizontal swipe on the calendar grid now changes month: swipe left for the next month, right for the

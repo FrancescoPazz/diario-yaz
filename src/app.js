@@ -62,9 +62,21 @@ const $ = id => document.getElementById(id);
 // Con una finestra aperta l'errore va dentro la finestra: tutto il resto della pagina sta sotto lo sfondo scuro.
 function showErr(msg) { const e = document.querySelector('dialog[open] .dlg-err') || $('err'); e.textContent = msg || ''; e.hidden = !msg; }
 let toastTimer = null;
-function toast(msg) {
-  const e = $('snackbar'); e.textContent = msg; e.hidden = true; void e.offsetWidth; e.hidden = false;
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => { e.hidden = true; }, 4500);
+let undo = null;   // packs as they were before the last delete, while the snackbar still offers "Undo"
+// An optional action ({ label, a }) adds a text button to the snackbar; it stays a little longer so it can be reached.
+function toast(msg, action) {
+  const e = $('snackbar'); e.hidden = true; e.textContent = ''; e.classList.toggle('with-action', !!action);
+  const t = document.createElement('span'); t.className = 'snack-txt'; t.textContent = msg; e.append(t);
+  if (action) {
+    const b = document.createElement('button'); b.className = 'snack-btn'; b.dataset.a = action.a; b.textContent = action.label; e.append(b);
+  } else undo = null;
+  void e.offsetWidth; e.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { e.hidden = true; undo = null; }, action ? 8000 : 4500);
+}
+// Any other change to the diary makes the saved copy stale: the "Undo" button is removed so it can't overwrite it.
+function dropUndo() {
+  if (!undo) return;
+  undo = null; const e = $('snackbar'), b = e.querySelector('.snack-btn'); if (b) { b.remove(); e.classList.remove('with-action'); }
 }
 
 function applyLang() {
@@ -90,6 +102,7 @@ async function load() {
 
 let saveQueue = Promise.resolve();
 function persist() {
+  dropUndo();
   state.blisters.sort((a, b) => (a.start < b.start ? -1 : 1));
   const snap = JSON.stringify(state);
   render();
@@ -229,9 +242,16 @@ const actions = {
   },
   del(el) { ui.delStart = el.dataset.start; openDialog('del'); },
   delYes() {
+    const before = state.blisters.map(b => ({ ...b }));
     state.blisters = state.blisters.filter(b => b.start !== ui.delStart); ui.dialog = null;
     const l = lastB(); if (l && l.placebo === false) l.placebo = null;
     persist();
+    undo = before; toast(T.deleted, { label: T.undo, a: 'undoDel' });
+  },
+  undoDel() {
+    if (!undo) return;
+    const before = undo; $('snackbar').hidden = true; clearTimeout(toastTimer);
+    state.blisters = before; persist(); toast(T.restored);
   },
   rxShift() { state.settings.rx = shiftRx(state, compute(state, d2n(localToday()))); persist(); },
   notifOn() { askPermission(); },

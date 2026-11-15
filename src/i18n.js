@@ -80,6 +80,9 @@ const TEXT = {
     delAria: d => `Elimina il blister del ${d}`,
     editAria: d => `Modifica il blister del ${d}`,
     edited: 'Blister modificato. Le date previste sono state ricalcolate.',
+    deleted: 'Blister eliminato.',
+    undo: 'Annulla',
+    restored: 'Blister ripristinato.',
     add: 'Aggiungi',
 
     time: 'Orario dei promemoria',
@@ -248,6 +251,9 @@ const TEXT = {
     delAria: d => `Delete the pack started on ${d}`,
     editAria: d => `Edit the pack started on ${d}`,
     edited: 'Pack updated. The expected dates have been recalculated.',
+    deleted: 'Pack deleted.',
+    undo: 'Undo',
+    restored: 'Pack restored.',
     add: 'Add',
 
     time: 'Reminder time',

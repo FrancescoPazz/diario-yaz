@@ -15,7 +15,7 @@
   --md-sys-color-surface-container-lowest: #ffffff; --md-sys-color-surface-container-low: #fff0f2;
   --md-sys-color-surface-container: #ffe9ec; --md-sys-color-surface-container-high: #f9e3e6;
   --md-sys-color-surface-container-highest: #f3dde0;
-  --md-sys-color-inverse-surface: #3a2d30; --md-sys-color-inverse-on-surface: #ffecef;
+  --md-sys-color-inverse-surface: #3a2d30; --md-sys-color-inverse-on-surface: #ffecef; --md-sys-color-inverse-primary: #ffb1c3;
   --md-sys-color-outline: #8a7175; --md-sys-color-outline-variant: #ddbfc4;
 
   --font: "Roboto Flex", Roboto, system-ui, sans-serif;
@@ -47,7 +47,7 @@
     --md-sys-color-surface-container-lowest: #160b0e; --md-sys-color-surface-container-low: #24181b;
     --md-sys-color-surface-container: #281c1f; --md-sys-color-surface-container-high: #332729;
     --md-sys-color-surface-container-highest: #3f3134;
-    --md-sys-color-inverse-surface: #f3dde0; --md-sys-color-inverse-on-surface: #3a2d30;
+    --md-sys-color-inverse-surface: #f3dde0; --md-sys-color-inverse-on-surface: #3a2d30; --md-sys-color-inverse-primary: #891141;
     --md-sys-color-outline: #a58a8f; --md-sys-color-outline-variant: #574146;
     --shadow-3: 0 1px 3px rgb(0 0 0 / .4), 0 4px 8px 3px rgb(0 0 0 / .25);
   }
@@ -330,6 +330,14 @@ dialog::backdrop { background: rgb(0 0 0 / .32); }
   max-width: 560px; margin: 0 auto; padding: 14px 16px; border-radius: var(--shape-xs); box-shadow: var(--shadow-3);
   background: var(--md-sys-color-inverse-surface); color: var(--md-sys-color-inverse-on-surface); font-size: 14px; line-height: 20px;
 }
+.snackbar.with-action { display: flex; align-items: center; gap: 8px; padding: 4px 8px 4px 16px; }
+.snack-txt { flex: 1; padding: 10px 0; }
+.snack-btn {
+  flex: none; min-height: 40px; padding: 0 12px; border: 0; border-radius: 20px; background: transparent; cursor: pointer;
+  color: var(--md-sys-color-inverse-primary); font: inherit; font-weight: 500; letter-spacing: .1px;
+}
+.snack-btn:hover { background: color-mix(in srgb, var(--md-sys-color-inverse-primary) 8%, transparent); }
+.snack-btn:focus-visible { outline: 2px solid var(--md-sys-color-inverse-primary); outline-offset: 2px; }
 .no-nav .snackbar { bottom: calc(var(--safe-bottom) + 16px); }
 .loading { padding: 48px 4px; }
 
