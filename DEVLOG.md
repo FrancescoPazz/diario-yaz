@@ -2,6 +2,29 @@
 
 Newest entries first.
 
+## 2026-11-16 — Snackbar above the "Add" button in History
+
+**What:** on the History screen the snackbar ("Pack deleted." with "Undo", "Pack restored.", etc.) now appears above the
+extended FAB instead of on top of it: 16 px margin + 56 px FAB + 12 px gap above the navigation bar. On the other screens
+(no FAB) and in the setup screen (no navigation bar) its position is unchanged. Pure CSS: a `.screen.has-fab ~ .snackbar`
+rule, using the `has-fab` class the History screen already sets on `<main>`.
+
+**Why:** second item of the roadmap. While the 8 s "Undo" snackbar was showing, it covered the lower part of "Add", so
+adding the correct pack right after deleting a wrong one meant waiting for it to disappear. Material 3 places snackbars
+above FABs. No calculation changed.
+
+**Files:** `src/styles.css`, `DEVLOG.md`, `ROADMAP.md`.
+
+**Checks:**
+- `npm ci`: ok
+- `npm test`: ok
+- `npm run build`: ok
+- `npm run sync`: ok
+- Browser check with Playwright on `www/index.html`, Pixel 7 emulation (light and dark): after deleting a pack in History
+  the snackbar ends 12 px above the FAB (no overlap); on Today the snackbar keeps its old position above the navigation
+  bar; no horizontal overflow, no page or console errors.
+- `./gradlew assembleDebug`: not run, the Android SDK is not available in this environment (Java is).
+
 ## 2026-11-15 — Undo after deleting a pack
 
 **What:** after confirming the deletion of a pack in History, the snackbar now says "Pack deleted." with an "Undo" text

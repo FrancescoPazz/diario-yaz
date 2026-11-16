@@ -339,6 +339,8 @@ dialog::backdrop { background: rgb(0 0 0 / .32); }
 .snack-btn:hover { background: color-mix(in srgb, var(--md-sys-color-inverse-primary) 8%, transparent); }
 .snack-btn:focus-visible { outline: 2px solid var(--md-sys-color-inverse-primary); outline-offset: 2px; }
 .no-nav .snackbar { bottom: calc(var(--safe-bottom) + 16px); }
+/* In History the snackbar sits above the FAB (16px margin + 56px FAB + 12px gap) so it never covers "Add". */
+.screen.has-fab ~ .snackbar { bottom: calc(var(--nav-h) + var(--safe-bottom) + 84px); }
 .loading { padding: 48px 4px; }
 
 /* ---------- movimento ---------- */
