@@ -13,5 +13,5 @@ Ideas for the next changes, most useful first. Each one should be a small, revie
 5. **Pack progress on the Today screen** — a short line with how many packs are recorded and since when.
 6. **Dependency check follow-up** — drop the remaining `uuid` audit warning once `@capacitor/assets` ships a fixed
    `@trapezedev/project`.
-7. **Lift the FAB while scrolling** — shrink the extended "Add" FAB to its icon-only form when the History list is
+7. **Shrink the FAB while scrolling** — shrink the extended "Add" FAB to its icon-only form when the History list is
    scrolled down, and expand it again at the top, as in Material 3.
