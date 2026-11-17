@@ -19,6 +19,7 @@
   <img src="https://img.shields.io/badge/Material-3-a92d58?style=flat&labelColor=24181b" alt="Material 3">
   <img src="https://img.shields.io/badge/lingue-IT%20%C2%B7%20EN-a92d58?style=flat&labelColor=24181b" alt="Lingue: italiano e inglese">
   <img src="https://img.shields.io/badge/dati-solo%20sul%20telefono-a92d58?style=flat&labelColor=24181b" alt="I dati restano sul telefono">
+  <img src="https://img.shields.io/badge/license-MIT-a92d58?style=flat&labelColor=24181b" alt="Licenza MIT">
 </p>
 
 ## Da dove partire
