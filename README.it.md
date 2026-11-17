@@ -92,7 +92,7 @@ alla voce "Orario esatto" nelle Impostazioni dell'app.
 | Dove | Cosa succede |
 |---|---|
 | **GitHub** | A ogni push su `main` parte [`build-apk.yml`](.github/workflows/build-apk.yml): test, APK di release e una nuova versione nelle [Releases](https://github.com/FrancescoPazz/diario-yaz/releases/latest) con il file `diario-yaz-N.apk`, dove N è il numero della build. Una build dura circa quattro minuti. |
-| **Sul telefono** | Il repository è privato: per scaricare l'APK serve l'accesso a GitHub nel browser. Android chiede il permesso di installare app da quel browser, e Play Protect può segnalare l'app come sconosciuta perché non arriva dal Play Store. |
+| **Sul telefono** | Apri l'[ultima release](https://github.com/FrancescoPazz/diario-yaz/releases/latest) nel browser del telefono e scarica l'APK; non serve un account GitHub. Android chiede il permesso di installare app da quel browser, e Play Protect può segnalare l'app come sconosciuta perché non arriva dal Play Store. |
 | **Aggiornamenti** | Ogni versione si installa sopra la precedente senza perdere i dati: la chiave di firma è sempre la stessa e il numero di versione cresce con la build. |
 
 ## Sviluppo
