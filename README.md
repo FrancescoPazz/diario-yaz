@@ -91,7 +91,7 @@ app's Settings.
 | Where | What happens |
 |---|---|
 | **GitHub** | Every push to `main` runs [`build-apk.yml`](.github/workflows/build-apk.yml): tests, release APK, and a new entry in [Releases](https://github.com/FrancescoPazz/diario-yaz/releases/latest) with the file `diario-yaz-N.apk`, where N is the build number. A build takes about four minutes. |
-| **On the phone** | The repository is private, so you need to be signed in to GitHub in the browser to download the APK. Android asks permission to install apps from that browser, and Play Protect may warn that the app is unknown because it doesn't come from the Play Store. |
+| **On the phone** | Open the [latest release](https://github.com/FrancescoPazz/diario-yaz/releases/latest) in the phone's browser and download the APK; no GitHub account is needed. Android asks permission to install apps from that browser, and Play Protect may warn that the app is unknown because it doesn't come from the Play Store. |
 | **Updates** | Each version installs over the previous one and keeps the data: the signing key never changes and the version number grows with the build. |
 
 ## Development
