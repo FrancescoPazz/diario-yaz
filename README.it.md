@@ -65,7 +65,7 @@ che seguono.
 |---|---|
 | **Oggi** | La domanda del giorno quando c'è, il blister con le compresse già prese e le prossime date in ordine: placebo, ciclo, nuovo blister, ricetta. |
 | **Calendario** | Giorni attivi, placebo, cicli previsti e saltati, mese per mese (scorri di lato o usa le frecce per cambiare mese); toccando un giorno vedi cos'è (numero della compressa, placebo, ciclo). Sotto, l'elenco dei prossimi cicli. |
-| **Storico** | I blister registrati, con le placebo prese o saltate. Puoi aggiungere blister passati, modificarne data di inizio e placebo, o eliminarne uno (per qualche secondo il pulsante "Annulla" lo riporta indietro). |
+| **Storico** | I blister registrati, con le placebo prese o saltate. Puoi aggiungere blister passati, modificarne data di inizio e placebo, o eliminarne uno (per qualche secondo il pulsante "Annulla" lo riporta indietro). Se una data è a meno di 24 giorni da un altro blister, un avviso ti chiede di controllarla. |
 | **Impostazioni** | Orario dei promemoria, prova delle notifiche, orario esatto, promemoria della ricetta, lingua e backup. |
 
 L'app segue la lingua del telefono (italiano, altrimenti inglese) e il suo tema chiaro o scuro. La lingua si può
