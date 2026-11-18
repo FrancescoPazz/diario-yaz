@@ -2,6 +2,34 @@
 
 Newest entries first.
 
+## 2026-11-18 — Warn about overlapping packs
+
+**What:** the "Add a pack" / "Edit the pack" sheet now shows a gentle note under the date when the chosen start is less
+than 24 days from another recorded pack: "This pack overlaps the one started on 9 November 2026: they are less than 24
+days apart. Check the date; you can still save." The note updates while the date changes (`input` event), is announced
+by screen readers (`aria-live="polite"`), names the closest overlapping pack, ignores the pack being edited and is also
+shown when opening the editor of a pack that already overlaps. Saving is still allowed. Same-day starts keep the existing
+"duplicate" error. The check lives in a new pure module, `src/checks.js` (`overlappingPack`), so `src/logic.js` is
+untouched. The note uses a surface-container-highest box with a tertiary info icon (light and dark).
+
+**Why:** third item of the roadmap. A start inside another pack's 24 active days is almost always a typo (wrong month
+or day in the date picker) and silently shifts every forecast and reminder.
+
+**Files:** `src/checks.js` (new), `src/app.js` (`overlapWarn`, `input` listener, info icon), `src/i18n.js`
+(`overlapWarn` in Italian and English), `src/styles.css` (`.dlg-warn`), `scripts/test-logic.mjs` (13 new assertions),
+`README.md`, `README.it.md`, `DEVLOG.md`, `ROADMAP.md`.
+
+**Checks:**
+- `npm ci`: ok
+- `npm test`: ok (new `overlappingPack` cases: both neighbours, 23/24-day boundaries, skipped placebo at day 25,
+  duplicate, edited pack, empty input)
+- `npm run build`: ok
+- `npm run sync`: ok
+- Browser check with Playwright on `www/index.html`, Pixel 7 emulation (light and dark): the note is hidden when the
+  sheet opens, appears for an overlapping date, disappears for a non-overlapping one, saving still works, the edit sheet
+  of an overlapping pack shows it at once; no horizontal overflow, no page or console errors.
+- `./gradlew assembleDebug`: not run, the Android SDK is not available in this environment (Java is).
+
 ## 2026-11-16 — Snackbar above the "Add" button in History
 
 **What:** on the History screen the snackbar ("Pack deleted." with "Undo", "Pack restored.", etc.) now appears above the

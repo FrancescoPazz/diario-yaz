@@ -5,6 +5,7 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { App } from '@capacitor/app';
 import { DAY, d2n, n2d, localToday, compute, buildMap, planNotifications, applyAnswer, parseBackup, normalizeState, nextRx, shiftRx } from './logic.js';
 import { strings, pickLang } from './i18n.js';
+import { overlappingPack } from './checks.js';
 
 // Material Symbols (stile rounded): esbuild li include come testo SVG
 import today from '@material-symbols/svg-400/rounded/today.svg';
@@ -37,10 +38,11 @@ import add from '@material-symbols/svg-400/rounded/add.svg';
 import check from '@material-symbols/svg-400/rounded/check.svg';
 import contentCopy from '@material-symbols/svg-400/rounded/content_copy.svg';
 import contentPaste from '@material-symbols/svg-400/rounded/content_paste.svg';
+import info from '@material-symbols/svg-400/rounded/info.svg';
 
 const ICONS = { today, todayFill, calendarMonth, calendarMonthFill, history, historyFill, settings, settingsFill, chevronLeft, chevronRight,
   waterDrop, pill, prescriptions, eventRepeat, eventBusy, snooze, schedule, notifications, notificationsOff, alarm, backup, translate,
-  checkCircle, skipNext, del, edit, add, check, contentCopy, contentPaste };
+  checkCircle, skipNext, del, edit, add, check, contentCopy, contentPaste, info };
 const icon = name => ICONS[name].replace('<svg', '<svg class="i" aria-hidden="true" focusable="false"');
 
 const NATIVE = Capacitor.isNativePlatform();
@@ -291,6 +293,9 @@ document.addEventListener('click', e => {
   const el = e.target.closest('[data-a]'); if (!el) return;
   e.preventDefault(); showErr('');
   actions[el.dataset.a] && actions[el.dataset.a](el);
+});
+document.addEventListener('input', e => {
+  if (e.target.id === 'add-date') $('add-warn').innerHTML = overlapWarn(e.target.value);
 });
 document.addEventListener('change', async e => {
   if (e.target.id === 'notif-time' && /^\d{2}:\d{2}$/.test(e.target.value)) {
@@ -552,6 +557,12 @@ function settingsView(m) {
   </ul></section>`;
 }
 
+// Gentle warning under the date in the pack sheet: a start less than 24 days from another pack is almost always a typo.
+function overlapWarn(v) {
+  const o = overlappingPack(state.blisters, v, ui.editStart);
+  return o ? `${icon('info')}<span>${T.overlapWarn(T.fmtFull(d2n(o)))}</span>` : '';
+}
+
 function dialogView() {
   if (ui.dialog === 'add') {
     const opts = [['placebo', T.optTaken], ['skip', T.optSkipped], ['open', T.optOpen]];
@@ -560,6 +571,7 @@ function dialogView() {
     return `<dialog id="dlg" class="sheet" aria-labelledby="dlg-t"><div><div class="handle"></div><div class="dlg-body">
       <h2 id="dlg-t" class="headline-s">${cur ? T.editTitle : T.addTitle}</h2>
       <label class="field"><span>${T.firstPill}</span><input type="date" class="input" id="add-date" max="${localToday()}"${cur ? ` value="${esc(cur.start)}"` : ''}></label>
+      <p class="dlg-warn" id="add-warn" aria-live="polite">${overlapWarn(cur ? cur.start : '')}</p>
       <fieldset class="seg"><legend>${T.placeboLegend}</legend><div class="seg-row">${opts.map(([v, l]) =>
         `<label><input type="radio" name="add-out" value="${v}"${v === sel ? ' checked' : ''}><span class="seg-in">${icon('check')}${l}</span></label>`).join('')}</div></fieldset>
       <p class="dlg-err" hidden></p>

@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { d2n, n2d, compute, buildMap, planNotifications, applyAnswer, parseBackup, normalizeState, KIND, nextRx, shiftRx } from '../src/logic.js';
 import { strings, pickLang } from '../src/i18n.js';
+import { overlappingPack } from '../src/checks.js';
 
 const at = (st, day) => compute(st, d2n(day));
 const base = { blisters: [{ start: '2026-10-12', placebo: null }], lastNo: null, settings: { time: '09:00' } };
@@ -132,6 +133,22 @@ assert.ok(compute(loaded.state, d2n('2026-11-10')));
 loaded = normalizeState(skipped);
 assert.deepEqual(loaded, { state: { ...skipped, settings: { time: '09:00', rx: null, lang: 'auto' } }, dropped: 0 });
 assert.deepEqual(normalizeState(null), { state: { blisters: [], lastNo: null, settings: { time: '09:00', rx: null, lang: 'auto' } }, dropped: 0 });
+
+// Overlapping packs: a start less than 24 days from another pack is reported (saving is still allowed).
+const packs = [{ start: '2026-09-14', placebo: true }, { start: '2026-10-12', placebo: false }, { start: '2026-11-05', placebo: null }];
+assert.equal(overlappingPack(packs, '2026-11-06'), '2026-11-05');          // a day after the last pack
+assert.equal(overlappingPack(packs, '2026-09-20'), '2026-09-14');          // inside the first pack's active pills
+assert.equal(overlappingPack(packs, '2026-10-01'), '2026-10-12');          // overlaps both: the closer one is named
+assert.equal(overlappingPack(packs, '2026-10-22'), '2026-10-12');          // closest of the two neighbours
+assert.equal(overlappingPack(packs, '2026-11-29'), null);                  // day 25 of the last pack: placebo skipped
+assert.equal(overlappingPack(packs, '2026-12-03'), null);                  // a normal new pack
+assert.equal(overlappingPack(packs, '2026-08-21'), null);                  // 24 days before the first pack
+assert.equal(overlappingPack(packs, '2026-08-22'), '2026-09-14');          // 23 days before: its active pills reach it
+assert.equal(overlappingPack(packs, '2026-11-05'), null);                  // same day: refused as a duplicate instead
+assert.equal(overlappingPack(packs, '2026-11-07', '2026-11-05'), null);    // editing the last pack ignores itself
+assert.equal(overlappingPack(packs, '2026-10-20', '2026-10-12'), '2026-11-05');    // moving a pack too close to the next one
+assert.equal(overlappingPack(packs, ''), null);
+assert.equal(overlappingPack([], '2026-11-06'), null);
 
 // Lingue: italiano e inglese hanno le stesse chiavi; senza scelta si segue il telefono (italiano solo se è in italiano).
 const it = strings('it'), en = strings('en');
