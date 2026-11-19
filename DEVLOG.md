@@ -2,6 +2,37 @@
 
 Newest entries first.
 
+## 2026-11-19 — Keep a copy of unreadable saved data
+
+**What:** when the saved diary can't be read at all (broken JSON, or text that is not a diary with a list of packs),
+the raw text is now copied under a separate storage key, `diario-yaz-unreadable`, before the app starts empty, so the
+next save can no longer overwrite it. The Backup sheet then shows an "Unreadable saved data" section with the text, a
+"Copy" button and a "Delete" button with an inline confirmation ("Delete the copy?"). The copy stays available across
+restarts until it is deleted. The load error now says "A copy was kept in Backup". Reading the storage moved into a
+small module, `src/store.js` (`loadStored`), which takes a Preferences-like object so it can be tested with a fake;
+`src/logic.js` is untouched. Packs with a damaged date are still skipped as before ("repaired").
+
+**Why:** second item of the roadmap. Before, an unreadable save showed an error and started an empty diary: the first
+pack the user added (often right away, from the setup screen) overwrote the only copy of the old history.
+
+**Files:** `src/store.js` (new), `src/app.js` (`load`, Backup sheet section, `unreadableAsk/No/Yes`, `copyBackup`
+with a `data-src`), `src/i18n.js` (`unreadableTitle`, `unreadableWhy`, `unreadableQ` and a clearer `err.load` in
+Italian and English), `scripts/test-logic.mjs` (fake storage tests), `README.md`, `README.it.md` (new FAQ entry),
+`DEVLOG.md`, `ROADMAP.md`.
+
+**Checks:**
+- `npm ci`: ok
+- `npm test`: ok (new `loadStored` cases: empty storage, valid diary, repaired packs, five unreadable inputs kept
+  without touching the original, kept copy offered after a good save, write failure still returning the text)
+- `npm run build`: ok
+- `npm run sync`: ok
+- Browser check with Playwright on `www/index.html`, Pixel 7 emulation (light and dark): with broken JSON in storage the
+  error appears, the copy is written, the Backup sheet from the setup screen shows the section and the "Restore"
+  heading; with a valid diary plus an old kept copy the sheet from Settings shows backup, kept copy and restore in that
+  order; "Delete" → confirm removes the key and the section while the sheet stays open; no horizontal overflow, no page
+  or console errors.
+- `./gradlew assembleDebug`: not run, the Android SDK is not available in this environment (Java is).
+
 ## 2026-11-18 — Warn about overlapping packs
 
 **What:** the "Add a pack" / "Edit the pack" sheet now shows a gentle note under the date when the chosen start is less

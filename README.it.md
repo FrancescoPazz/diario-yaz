@@ -209,6 +209,15 @@ ripristinare": incolla lì il testo.
 </details>
 
 <details>
+<summary><b>L'app dice che non riesce a leggere i dati salvati.</b></summary>
+
+L'app riparte vuota ma tiene una copia dei dati non leggibili: apri Backup (dalla prima schermata o dalle Impostazioni)
+e copia il testo sotto "Dati salvati non leggibili". Può servire a recuperare i blister; eliminala quando non ti serve
+più.
+
+</details>
+
+<details>
 <summary><b>Il promemoria della ricetta cade nel blister sbagliato.</b></summary>
 
 L'app non sa quando hai preso l'ultima ricetta, quindi conta dal primo blister del diario. Nelle Impostazioni,
