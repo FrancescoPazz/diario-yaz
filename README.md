@@ -208,6 +208,14 @@ the text there.
 </details>
 
 <details>
+<summary><b>The app says it can't read the saved data.</b></summary>
+
+The app starts empty but keeps a copy of the unreadable data: open Backup (from the first screen or from Settings) and
+copy the text under "Unreadable saved data". It may help to recover your packs; delete it when you no longer need it.
+
+</details>
+
+<details>
 <summary><b>The prescription reminder falls in the wrong pack.</b></summary>
 
 The app can't know when you got your last prescription, so it counts from the first pack in the diary. In Settings,

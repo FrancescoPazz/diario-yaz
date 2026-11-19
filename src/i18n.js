@@ -122,6 +122,9 @@ const TEXT = {
     copy: 'Copia',
     copied: 'Copiato',
     copyManual: 'Tieni premuto il testo e scegli Copia',
+    unreadableTitle: 'Dati salvati non leggibili',
+    unreadableWhy: 'L\'app non è riuscita a leggere i dati salvati e ne ha tenuto una copia qui, così non vanno persi. Copiala e conservala: potrebbe servire a recuperare i blister. Eliminala quando non ti serve più.',
+    unreadableQ: 'Eliminare la copia?',
     restore: 'Ripristina',
     restoreWhy: 'Incolla qui un backup. I dati attuali vengono sostituiti.',
     backupAria: 'Backup dei dati',
@@ -132,7 +135,7 @@ const TEXT = {
     close: 'Chiudi',
 
     err: {
-      load: 'Non riesco a leggere i dati salvati. Se hai un backup puoi reimportarlo.',
+      load: 'Non riesco a leggere i dati salvati. Ne ho tenuta una copia in Backup; se hai un backup puoi reimportarlo.',
       repaired: 'Alcuni blister salvati erano danneggiati e sono stati ignorati. Controlla lo storico.',
       save: 'Salvataggio non riuscito. Riprova.',
       notifOff: 'Le notifiche sono disattivate. Puoi attivarle da Impostazioni Android › App › Diario Yaz › Notifiche.',
@@ -294,6 +297,9 @@ const TEXT = {
     copy: 'Copy',
     copied: 'Copied',
     copyManual: 'Press and hold the text, then choose Copy',
+    unreadableTitle: 'Unreadable saved data',
+    unreadableWhy: 'The app could not read its saved data and kept a copy here, so it isn\'t lost. Copy it and keep it: it may help to recover your packs. Delete it when you no longer need it.',
+    unreadableQ: 'Delete the copy?',
     restore: 'Restore',
     restoreWhy: 'Paste a backup here. It replaces the current data.',
     backupAria: 'Data backup',
@@ -304,7 +310,7 @@ const TEXT = {
     close: 'Close',
 
     err: {
-      load: 'I can\'t read the saved data. If you have a backup, you can import it again.',
+      load: 'I can\'t read the saved data. A copy was kept in Backup; if you have a backup, you can import it again.',
       repaired: 'Some saved packs were damaged and have been ignored. Check the history.',
       save: 'Saving failed. Try again.',
       notifOff: 'Notifications are off. You can turn them on in Android Settings › Apps › Diario Yaz › Notifications.',

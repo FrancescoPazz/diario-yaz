@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { d2n, n2d, compute, buildMap, planNotifications, applyAnswer, parseBackup, normalizeState, KIND, nextRx, shiftRx } from '../src/logic.js';
 import { strings, pickLang } from '../src/i18n.js';
 import { overlappingPack } from '../src/checks.js';
+import { loadStored, STORE_KEY, UNREADABLE_KEY } from '../src/store.js';
 
 const at = (st, day) => compute(st, d2n(day));
 const base = { blisters: [{ start: '2026-10-12', placebo: null }], lastNo: null, settings: { time: '09:00' } };
@@ -168,5 +169,34 @@ for (const L of [it, en]) for (const p of [...plan, ...planNotifications(base, d
   assert.ok(title && body && !body.includes('undefined'), `${L.lang} ${p.kind}`);
 }
 assert.throws(() => parseBackup('ciao'));
+
+// Loading saved data: unreadable text is copied aside instead of being lost at the next save.
+const fakePrefs = (init = {}, failSet = false) => {
+  const m = new Map(Object.entries(init));
+  return { m,
+    async get({ key }) { return { value: m.has(key) ? m.get(key) : null }; },
+    async set({ key, value }) { if (failSet) throw new Error('disk'); m.set(key, value); },
+    async remove({ key }) { m.delete(key); } };
+};
+const EMPTY_ST = () => ({ blisters: [], lastNo: null, settings: { time: '09:00', rx: null, lang: 'auto' } });
+let ld = await loadStored(fakePrefs(), EMPTY_ST);
+assert.deepEqual([ld.status, ld.unreadable, ld.state.blisters.length], ['ok', null, 0]);
+ld = await loadStored(fakePrefs({ [STORE_KEY]: JSON.stringify(base) }), EMPTY_ST);
+assert.deepEqual([ld.status, ld.unreadable, ld.state.blisters[0].start], ['ok', null, '2026-10-12']);
+ld = await loadStored(fakePrefs({ [STORE_KEY]: '{"blisters":[{"start":"x"},{"start":"2026-10-12"}]}' }), EMPTY_ST);
+assert.deepEqual([ld.status, ld.unreadable, ld.state.blisters.length], ['repaired', null, 1]);
+for (const raw of ['{"blisters":[{"start":"2026-10-12"', 'null', '"text"', '{"packs":[]}', '[1,2]']) {
+  const pr = fakePrefs({ [STORE_KEY]: raw });
+  ld = await loadStored(pr, EMPTY_ST);
+  assert.deepEqual([ld.status, ld.unreadable, ld.state.blisters.length], ['unreadable', raw, 0], raw);
+  assert.equal(pr.m.get(UNREADABLE_KEY), raw);
+  assert.equal(pr.m.get(STORE_KEY), raw);   // the original is not touched while loading
+}
+// After a later good save the kept copy is still offered, until the user deletes it.
+ld = await loadStored(fakePrefs({ [STORE_KEY]: JSON.stringify(base), [UNREADABLE_KEY]: '{bad' }), EMPTY_ST);
+assert.deepEqual([ld.status, ld.unreadable], ['ok', '{bad']);
+// If the copy can't be written it is still returned for this session.
+ld = await loadStored(fakePrefs({ [STORE_KEY]: '{bad' }, true), EMPTY_ST);
+assert.deepEqual([ld.status, ld.unreadable], ['unreadable', '{bad']);
 
 console.log('Tutti i test sui calcoli sono passati.');

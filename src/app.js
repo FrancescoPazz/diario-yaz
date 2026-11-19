@@ -3,9 +3,10 @@ import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { App } from '@capacitor/app';
-import { DAY, d2n, n2d, localToday, compute, buildMap, planNotifications, applyAnswer, parseBackup, normalizeState, nextRx, shiftRx } from './logic.js';
+import { DAY, d2n, n2d, localToday, compute, buildMap, planNotifications, applyAnswer, parseBackup, nextRx, shiftRx } from './logic.js';
 import { strings, pickLang } from './i18n.js';
 import { overlappingPack } from './checks.js';
+import { STORE_KEY, UNREADABLE_KEY, loadStored } from './store.js';
 
 // Material Symbols (stile rounded): esbuild li include come testo SVG
 import today from '@material-symbols/svg-400/rounded/today.svg';
@@ -46,7 +47,6 @@ const ICONS = { today, todayFill, calendarMonth, calendarMonthFill, history, his
 const icon = name => ICONS[name].replace('<svg', '<svg class="i" aria-hidden="true" focusable="false"');
 
 const NATIVE = Capacitor.isNativePlatform();
-const STORE_KEY = 'diario-yaz';
 const CHANNEL = 'promemoria';
 const EMPTY = () => ({ blisters: [], lastNo: null, settings: { time: '09:00', rx: null, lang: 'auto' } });
 const TABS = [['oggi', 'today'], ['calendario', 'calendarMonth'], ['storico', 'history'], ['impostazioni', 'settings']];
@@ -55,6 +55,7 @@ let state = null;
 let T = strings(pickLang('auto', navigator.language));
 let ui = { tab: 'oggi', month: null, calDay: null, pickDate: false, dialog: null, delStart: null, editStart: null };
 let shownTab = null;
+let unreadable = null;   // kept raw text of saved data the app could not read, shown in the Backup sheet
 let calSlide = null;   // 'next' | 'prev': direction of the month change to animate on the next render
 let notif = { display: 'unknown', exact: 'unknown' };
 
@@ -90,12 +91,13 @@ function applyLang() {
 /* ---------- salvataggio sul dispositivo ---------- */
 async function load() {
   try {
-    const { value } = await Preferences.get({ key: STORE_KEY });
-    if (!value) return EMPTY();
     // Damaged packs are skipped so the rest of the diary still opens; the user is told to check the history.
-    const { state: d, dropped } = normalizeState(JSON.parse(value));
-    if (dropped) showErr(T.err.repaired);
-    return d;
+    // Unreadable data is copied aside first, so it can still be recovered from the Backup sheet.
+    const r = await loadStored(Preferences, EMPTY);
+    unreadable = r.unreadable;
+    if (r.status === 'repaired') showErr(T.err.repaired);
+    if (r.status === 'unreadable') showErr(T.err.load);
+    return r.state;
   } catch (e) {
     showErr(T.err.load);
     return EMPTY();
@@ -271,13 +273,19 @@ const actions = {
   backupOpen() { openDialog('backup'); },
   // Dentro la finestra la snackbar non si vedrebbe: la conferma va sul pulsante stesso.
   async copyBackup(el) {
-    const ta = $('backup-out');
+    const ta = $(el.dataset.src || 'backup-out');
     try { await navigator.clipboard.writeText(ta.value); el.innerHTML = icon('check') + T.copied; }
     catch (e) { ta.focus(); ta.select(); el.textContent = T.copyManual; }
   },
   importAsk() {
     try { parseBackup($('backup-in').value); $('imp-ask').hidden = true; $('imp-confirm').hidden = false; }
     catch (e) { showErr(T.backupErr[e.message] || T.backupErr.json); }
+  },
+  unreadableAsk() { $('unr-ask').hidden = true; $('unr-confirm').hidden = false; },
+  unreadableNo() { $('unr-ask').hidden = false; $('unr-confirm').hidden = true; },
+  async unreadableYes() {
+    try { await Preferences.remove({ key: UNREADABLE_KEY }); unreadable = null; render(); }   // the section disappears from the open sheet
+    catch (e) { showErr(T.err.save); }
   },
   importNo() { $('imp-ask').hidden = false; $('imp-confirm').hidden = true; },
   importYes() {
@@ -589,9 +597,15 @@ function dialogView() {
     const out = state.blisters.length ? `<p class="body-m muted">${T.backupCopyWhy}</p>
       <textarea id="backup-out" class="input" readonly aria-label="${T.backupAria}">${esc(JSON.stringify(state))}</textarea>
       <div class="row"><button class="btn tonal" data-a="copyBackup">${icon('contentCopy')}${T.copy}</button></div>
-      <h3 class="title-m">${T.restore}</h3>` : '';
+` : '';
+    const lost = unreadable ? `<h3 class="title-m">${T.unreadableTitle}</h3>
+      <p class="body-m muted">${T.unreadableWhy}</p>
+      <textarea id="unreadable-out" class="input" readonly aria-label="${T.unreadableTitle}">${esc(unreadable)}</textarea>
+      <div class="row" id="unr-ask"><button class="btn tonal" data-a="copyBackup" data-src="unreadable-out">${icon('contentCopy')}${T.copy}</button><button class="btn text" data-a="unreadableAsk">${T.delete}</button></div>
+      <div class="row" id="unr-confirm" hidden><span class="body-m grow">${T.unreadableQ}</span><button class="btn text" data-a="unreadableNo">${T.cancel}</button><button class="btn filled" data-a="unreadableYes">${T.delete}</button></div>
+` : '';
     return `<dialog id="dlg" class="sheet" aria-labelledby="dlg-t"><div><div class="handle"></div><div class="dlg-body">
-      <h2 id="dlg-t" class="headline-s">${T.backup}</h2>${out}
+      <h2 id="dlg-t" class="headline-s">${T.backup}</h2>${out}${lost}${out || lost ? `<h3 class="title-m">${T.restore}</h3>` : ''}
       <p class="body-m muted">${T.restoreWhy}</p>
       <textarea id="backup-in" class="input" aria-label="${T.pasteAria}" placeholder='{"blisters":[...]}'></textarea>
       <p class="dlg-err" hidden></p>
