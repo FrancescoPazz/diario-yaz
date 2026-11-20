@@ -2,6 +2,30 @@
 
 Newest entries first.
 
+## 2026-11-20 — Flag overlapping packs in History
+
+**What:** each row of the History list now shows a small note when that pack starts less than 24 days from another
+recorded pack: "Overlaps the pack started on Sun 25 Oct: check the date" ("Si sovrappone al blister del dom 25 ott:
+controlla la data"), with a tertiary info icon. Both packs of an overlapping pair are flagged, each naming the closest
+one. It reuses `overlappingPack` from `src/checks.js`, the same check as the pack sheet; `src/logic.js` is untouched.
+
+**Why:** second item of the roadmap. The sheet only warns while typing a date, so overlaps saved before that warning
+existed (usually a wrong month or day) stayed hidden while still shifting forecasts and reminders.
+
+**Files:** `src/app.js` (`historyView`), `src/i18n.js` (`histOverlap` in Italian and English), `src/styles.css`
+(`.li-warn`), `scripts/test-logic.mjs` (history-style checks: both sides of an overlap flagged, a clean history
+flags nothing), `DEVLOG.md`, `ROADMAP.md`.
+
+**Checks:**
+- `npm ci`: ok (`npm audit`: 0 vulnerabilities, so the old `uuid` roadmap item is dropped)
+- `npm test`: ok
+- `npm run build`: ok
+- `npm run sync`: ok
+- Browser check with Playwright on `www/index.html`, Pixel 7 emulation (Italian light, English dark): with a typo pack
+  on 25 Oct between 12 Oct and 5 Nov, the three involved rows show the note and the 14 Sep row does not; text wraps
+  under the icon, no horizontal overflow, no page or console errors.
+- `./gradlew assembleDebug`: not run, the Android SDK is not available in this environment (Java is).
+
 ## 2026-11-19 — Keep a copy of unreadable saved data
 
 **What:** when the saved diary can't be read at all (broken JSON, or text that is not a diary with a list of packs),

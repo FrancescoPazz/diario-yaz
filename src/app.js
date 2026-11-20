@@ -537,8 +537,11 @@ function historyView() {
     const [ic, tone, sub] = b.placebo === true ? ['checkCircle', '', T.histTaken(period)]
       : b.placebo === false ? ['skipNext', 'tertiary', T.histSkipped(period)]
         : ['pill', 'primary', T.histOpen(period)];
+    // Packs whose start is less than 24 days from another one are flagged, so old typos are easy to spot.
+    const o = overlappingPack(state.blisters, b.start);
+    const warn = o ? `<div class="li-s li-warn">${icon('info')}<span>${T.histOverlap(T.fmt(d2n(o)))}</span></div>` : '';
     return `<li class="li"><span class="av ${tone}">${icon(ic)}</span>
-      <div><div class="li-h">${T.fmtFull(s)}</div><div class="li-s">${sub}</div></div>
+      <div><div class="li-h">${T.fmtFull(s)}</div><div class="li-s">${sub}</div>${warn}</div>
       <div class="li-acts"><button class="icon-btn" data-a="edit" data-start="${b.start}" aria-label="${T.editAria(T.fmt(s))}">${icon('edit')}</button>
       <button class="icon-btn" data-a="del" data-start="${b.start}" aria-label="${T.delAria(T.fmt(s))}">${icon('del')}</button></div></li>`;
   }).join('');
