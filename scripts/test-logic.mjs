@@ -146,6 +146,10 @@ assert.equal(overlappingPack(packs, '2026-12-03'), null);                  // a 
 assert.equal(overlappingPack(packs, '2026-08-21'), null);                  // 24 days before the first pack
 assert.equal(overlappingPack(packs, '2026-08-22'), '2026-09-14');          // 23 days before: its active pills reach it
 assert.equal(overlappingPack(packs, '2026-11-05'), null);                  // same day: refused as a duplicate instead
+// History rows: each recorded pack checked against the others flags both sides of an overlap and nothing else.
+const typo = [...packs, { start: '2026-10-25', placebo: true }];
+assert.deepEqual(typo.map(b => overlappingPack(typo, b.start)), [null, '2026-10-25', '2026-10-25', '2026-11-05']);
+assert.deepEqual(packs.map(b => overlappingPack(packs, b.start)), [null, null, null]);
 assert.equal(overlappingPack(packs, '2026-11-07', '2026-11-05'), null);    // editing the last pack ignores itself
 assert.equal(overlappingPack(packs, '2026-10-20', '2026-10-12'), '2026-11-05');    // moving a pack too close to the next one
 assert.equal(overlappingPack(packs, ''), null);

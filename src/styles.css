@@ -219,6 +219,8 @@ h1, h2, h3, p { margin: 0; }
 .li-acts { display: flex; gap: 4px; }
 .li-h { font-size: 16px; line-height: 24px; }
 .li-s { font-size: 14px; line-height: 20px; color: var(--md-sys-color-on-surface-variant); }
+.li-warn { display: flex; gap: 4px; align-items: flex-start; margin-top: 2px; }
+.li-warn .i { flex: none; width: 18px; height: 18px; margin-top: 1px; color: var(--md-sys-color-tertiary); }
 .li-t { font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: .04em; color: var(--md-sys-color-on-surface-variant); text-align: right; white-space: nowrap; }
 .av { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
 .av .i { width: 20px; height: 20px; }
