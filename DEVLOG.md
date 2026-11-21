@@ -2,6 +2,29 @@
 
 Newest entries first.
 
+## 2026-11-21 — Tests for the prescription reminder edge cases
+
+**What:** new assertions in `scripts/test-logic.mjs` for `rxStarts`, `nextRx` and `shiftRx`: an rx date before the
+first pack behaves like no rx (reminders on the 2nd, 4th… pack); an rx date on a pack's first day belongs to that pack
+and the day before to the previous one; "Move" across a skipped placebo treats the 24-day pack as one pack and two moves
+return to the original packs; a moved reminder stays on the same pack when the pack before it is started three days
+late (the reminder follows the shifted forecast, 30 Dec instead of 27 Dec, and nothing lands on the late pack).
+`rxStarts` is now imported by the tests. No app code changed; `src/logic.js` is untouched and all the cases already
+behave correctly.
+
+**Why:** second item of the roadmap. These paths decide when the "ask for the prescription" reminder fires and were only
+covered by the simple case; a regression there would silently move or drop a reminder.
+
+**Files:** `scripts/test-logic.mjs`, `DEVLOG.md`, `ROADMAP.md`.
+
+**Checks:**
+- `npm ci`: ok
+- `npm test`: ok
+- `npm run build`: ok
+- `npm run sync`: ok
+- Browser check: not needed, no UI change.
+- `./gradlew assembleDebug`: not run, the Android SDK is not available in this environment (Java is).
+
 ## 2026-11-20 — Flag overlapping packs in History
 
 **What:** each row of the History list now shows a small note when that pack starts less than 24 days from another
