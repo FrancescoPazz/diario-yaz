@@ -1,6 +1,6 @@
 // Test dei calcoli del blister: node scripts/test-logic.mjs (oppure npm test)
 import assert from 'node:assert/strict';
-import { d2n, n2d, compute, buildMap, planNotifications, applyAnswer, parseBackup, normalizeState, KIND, nextRx, shiftRx } from '../src/logic.js';
+import { d2n, n2d, compute, buildMap, planNotifications, applyAnswer, parseBackup, normalizeState, KIND, nextRx, shiftRx, rxStarts } from '../src/logic.js';
 import { strings, pickLang } from '../src/i18n.js';
 import { overlappingPack } from '../src/checks.js';
 import { loadStored, STORE_KEY, UNREADABLE_KEY } from '../src/store.js';
@@ -64,6 +64,31 @@ const moved = { ...base, settings: { time: '09:00', rx: shiftRx(base, m) } };
 assert.equal(n2d(nextRx(moved, m)), '2026-11-01');    // primo blister: oggi è proprio il giorno 21
 assert.ok(has(planNotifications(moved, m.t), KIND.RX, '2026-12-27'));
 assert.equal(n2d(nextRx({ ...base, settings: { time: '09:00', rx: shiftRx(moved, m) } }, m)), '2026-11-29');
+
+// Prescription edge cases.
+// An rx date before the first pack counts like no rx at all: reminders on the 2nd, 4th... pack.
+const early = { ...base, settings: { time: '09:00', rx: '2026-01-01' } };
+assert.deepEqual(rxStarts(early, m), rxStarts(base, m));
+assert.equal(n2d(nextRx(early, m)), '2026-11-29');
+// An rx date on a pack's first day belongs to that pack, the day before belongs to the previous one.
+assert.equal(n2d(nextRx({ ...base, settings: { time: '09:00', rx: '2026-11-09' } }, m)), '2026-11-29');
+assert.equal(n2d(nextRx({ ...base, settings: { time: '09:00', rx: '2026-11-08' } }, m)), '2026-11-01');
+// "Move" across a skipped placebo: the 24-day pack counts as one pack, and two moves come back to the start.
+let ms = at(skipped, '2026-11-05');
+assert.equal(n2d(nextRx(skipped, ms)), '2026-11-25');                 // pack started on 5 Nov (the 2nd)
+const rx1 = { ...skipped, settings: { time: '09:00', rx: shiftRx(skipped, ms) } };
+assert.equal(n2d(nextRx(rx1, ms)), '2026-12-23');                     // next pack, started on 3 Dec
+assert.ok(rxStarts(rx1, ms).includes(d2n('2026-10-12')));             // same parity as the skipped pack
+const rx2 = { ...skipped, settings: { time: '09:00', rx: shiftRx(rx1, ms) } };
+assert.equal(n2d(nextRx(rx2, ms)), '2026-11-25');
+// A moved reminder stays on the same pack when the pack before it starts a few days late.
+const rx3 = { ...base, settings: { time: '09:00', rx: shiftRx(base, m) } };     // 1st and 3rd pack (7 Dec)
+assert.deepEqual(rxStarts(rx3, m).slice(0, 2).map(n2d), ['2026-10-12', '2026-12-07']);
+const late = { ...rx3, blisters: [{ start: '2026-10-12', placebo: true }, { start: '2026-11-12', placebo: null }] };
+ms = at(late, '2026-11-12');
+assert.equal(n2d(nextRx(late, ms)), '2026-12-30');                    // third pack, now starting on 10 Dec
+assert.ok(has(planNotifications(late, ms.t), KIND.RX, '2026-12-30'));
+assert.ok(!has(planNotifications(late, ms.t), KIND.RX, '2026-12-02'));   // not on the late 2nd pack
 
 // Calendar map: a late pack leaves "gap" days counted from the day after day 28; a pack recorded early cuts the
 // previous one short; a skipped placebo marks day 24 as the end of that pack.
