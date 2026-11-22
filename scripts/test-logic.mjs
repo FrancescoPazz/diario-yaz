@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { d2n, n2d, compute, buildMap, planNotifications, applyAnswer, parseBackup, normalizeState, KIND, nextRx, shiftRx, rxStarts } from '../src/logic.js';
 import { strings, pickLang } from '../src/i18n.js';
-import { overlappingPack } from '../src/checks.js';
+import { overlappingPack, overlapCount } from '../src/checks.js';
 import { loadStored, STORE_KEY, UNREADABLE_KEY } from '../src/store.js';
 
 const at = (st, day) => compute(st, d2n(day));
@@ -179,6 +179,12 @@ assert.equal(overlappingPack(packs, '2026-11-07', '2026-11-05'), null);    // ed
 assert.equal(overlappingPack(packs, '2026-10-20', '2026-10-12'), '2026-11-05');    // moving a pack too close to the next one
 assert.equal(overlappingPack(packs, ''), null);
 assert.equal(overlappingPack([], '2026-11-06'), null);
+// Today hint: counts the packs History flags.
+assert.equal(overlapCount(typo), 3);
+assert.equal(overlapCount(packs), 0);
+assert.equal(overlapCount([]), 0);
+assert.equal(overlapCount(undefined), 0);
+assert.equal(overlapCount([{ start: '2026-09-14' }, { start: '2026-09-20' }]), 2);
 
 // Lingue: italiano e inglese hanno le stesse chiavi; senza scelta si segue il telefono (italiano solo se è in italiano).
 const it = strings('it'), en = strings('en');

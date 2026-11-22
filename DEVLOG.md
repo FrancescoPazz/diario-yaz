@@ -2,6 +2,30 @@
 
 Newest entries first.
 
+## 2026-11-22 — Overlap hint on the Today screen
+
+**What:** when some recorded packs overlap another one (starts less than 24 days apart, the same packs History flags),
+the Today screen now shows a small card above the pack: "3 packs overlap each other: check the dates in History."
+("3 blister si sovrappongono tra loro: controlla le date nello storico.") with an "Open History" ("Apri storico")
+button that switches to the History tab. The count comes from a new pure helper, `overlapCount` in `src/checks.js`,
+built on `overlappingPack`; `src/logic.js` is untouched. With no overlaps nothing is shown.
+
+**Why:** fourth item of the roadmap. History already flags overlapping packs, but only if the user opens it; an old
+typo keeps shifting forecasts and reminders silently until then.
+
+**Files:** `src/checks.js` (`overlapCount`), `src/app.js` (`overlapView` on the Today screen), `src/i18n.js`
+(`overlapHint`, `overlapOpen` in Italian and English), `scripts/test-logic.mjs` (count tests), `DEVLOG.md`, `ROADMAP.md`.
+
+**Checks:**
+- `npm ci`: ok (0 vulnerabilities)
+- `npm test`: ok
+- `npm run build`: ok
+- `npm run sync`: ok
+- Browser check with Playwright on `www/index.html`, Pixel 7 emulation (Italian light, English dark): with a typo pack
+  on 25 Oct the card shows "3", the button opens History; with a clean history no card appears; no horizontal
+  overflow, no page or console errors.
+- `./gradlew assembleDebug`: not run, the Android SDK is not available in this environment (Java is).
+
 ## 2026-11-21 — Tests for the prescription reminder edge cases
 
 **What:** new assertions in `scripts/test-logic.mjs` for `rxStarts`, `nextRx` and `shiftRx`: an rx date before the

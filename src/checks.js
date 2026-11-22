@@ -19,3 +19,8 @@ export function overlappingPack(blisters, start, ignore = null) {
   }
   return best;
 }
+
+/** How many recorded packs overlap another one (the packs History flags), so the Today screen can point to them. */
+export function overlapCount(blisters) {
+  return (blisters || []).filter(b => b && overlappingPack(blisters, b.start)).length;
+}

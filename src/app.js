@@ -5,7 +5,7 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { App } from '@capacitor/app';
 import { DAY, d2n, n2d, localToday, compute, buildMap, planNotifications, applyAnswer, parseBackup, nextRx, shiftRx } from './logic.js';
 import { strings, pickLang } from './i18n.js';
-import { overlappingPack } from './checks.js';
+import { overlappingPack, overlapCount } from './checks.js';
 import { STORE_KEY, UNREADABLE_KEY, loadStored } from './store.js';
 
 // Material Symbols (stile rounded): esbuild li include come testo SVG
@@ -351,7 +351,7 @@ function render() {
 const VIEWS = {
   oggi: m => {
     const head = T.fmtLong(m.t);
-    return [head, pageHead(head, T.dayOf(Math.max(m.day, 1), T.fmt(m.last.s))) + askView(m) + skipView(m) + todayView(m) + nextView(m)];
+    return [head, pageHead(head, T.dayOf(Math.max(m.day, 1), T.fmt(m.last.s))) + askView(m) + skipView(m) + overlapView() + todayView(m) + nextView(m)];
   },
   calendario: m => [T.tabs.calendario, pageHead(T.tabs.calendario) + calendarView(m) + periodsView(m)],
   storico: () => [T.tabs.storico, pageHead(T.tabs.storico) + historyView()],
@@ -420,6 +420,14 @@ function skipView(m) {
     <h2 class="title-m">${head}</h2>
     <p class="body-m">${T.skipWhy(T.fmtLong(m.last.s), T.fmtLong(s.skipped), s.next && T.fmtLong(s.next.n))}</p>
   </div></section>`;
+}
+
+// One-line hint when some packs overlap, so a typo in an old date is noticed without opening History.
+function overlapView() {
+  const n = overlapCount(state.blisters); if (!n) return '';
+  return `<section class="card notice soft" role="status"><span class="av tertiary">${icon('info')}</span>
+    <p class="body-m grow">${T.overlapHint(n)}</p>
+    <button class="btn tonal" data-a="tab" data-tab="storico">${T.overlapOpen}</button></section>`;
 }
 
 function todayView(m) {
