@@ -225,9 +225,9 @@ const actions = {
     if (d2n(v) <= d2n(lastB().start) + 23) return showErr(T.err.after24);
     answer('yes', v);
   },
-  monthPrev() { goMonth(-1); },
-  monthNext() { goMonth(1); },
-  monthToday() { ui.month = null; ui.calDay = null; render(); },
+  monthPrev() { goMonth(-1, 'monthPrev'); },
+  monthNext() { goMonth(1, 'monthNext'); },
+  monthToday() { ui.month = null; ui.calDay = null; render(); monthChanged('monthToday'); },
   calDay(el) { ui.calDay = Number(el.dataset.n); render(); },
   closeDialog,
   addOpen() { ui.editStart = null; openDialog('add'); },
@@ -293,7 +293,17 @@ const actions = {
     catch (e) { showErr(T.backupErr[e.message] || T.backupErr.json); }
   },
 };
-function goMonth(k) { ui.month = shiftMonth(ui.month, k); ui.calDay = null; calSlide = k > 0 ? 'next' : 'prev'; render(); }
+function goMonth(k, from) { ui.month = shiftMonth(ui.month, k); ui.calDay = null; calSlide = k > 0 ? 'next' : 'prev'; render(); monthChanged(from); }
+// After a month change the calendar is rebuilt: the new month is announced to screen readers and, when a button
+// was used, focus goes back to that button (or to the month title if the button is gone, like "Today").
+// A swipe passes no button, so focus is left alone.
+function monthChanged(from) {
+  const live = $('live'), title = document.querySelector('.cal-head h2');
+  if (live && title) { live.textContent = ''; setTimeout(() => { live.textContent = title.textContent; }, 50); }
+  if (!from) return;
+  const target = document.querySelector(`.cal-head [data-a="${from}"]`) || title;
+  if (target) target.focus({ preventScroll: true });
+}
 function shiftMonth(m, k) { const t = new Date(); let [y, mo] = m || [t.getFullYear(), t.getMonth()]; mo += k; y += Math.floor(mo / 12); mo = ((mo % 12) + 12) % 12; return [y, mo]; }
 
 document.addEventListener('click', e => {
@@ -515,7 +525,7 @@ function calendarView(m) {
     : `<span class="muted">${C.hint}</span>`}</p>`;
   const lg = T.legend;
   return `<section class="card cal-card">
-    <div class="card-head cal-head"><h2 class="title-l">${T.monthTitle(first)}</h2>
+    <div class="card-head cal-head"><h2 class="title-l" tabindex="-1">${T.monthTitle(first)}</h2>
       <div class="row" style="gap:0">${away ? `<button class="btn text" data-a="monthToday">${T.todayBtn}</button>` : ''}<button class="icon-btn" data-a="monthPrev" aria-label="${T.prevMonth}">${icon('chevronLeft')}</button><button class="icon-btn" data-a="monthNext" aria-label="${T.nextMonth}">${icon('chevronRight')}</button></div>
     </div>
     <div class="cal${slide ? ' slide-' + slide : ''}">${cells}</div>

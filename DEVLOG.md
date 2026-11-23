@@ -2,6 +2,33 @@
 
 Newest entries first.
 
+## 2026-11-23 — Keep focus and announce the month when changing month
+
+**What:** on the Calendar, the previous/next month buttons used to lose keyboard and TalkBack focus, because the
+whole screen is rebuilt on every change; the new month was also never announced (the old live region is recreated
+with the screen, so screen readers ignore it). Now a persistent, visually hidden live region (`#live`, `.sr-only`)
+announces the new month ("dicembre 2026" / "December 2026") after any month change, swipe included, and focus goes
+back to the button that was used. "Today" disappears once the current month is shown, so focus then moves to the
+month title (`tabindex="-1"`, no focus ring). A swipe announces the month but leaves focus alone.
+
+**Why:** first item of the roadmap (accessibility pass). Browsing months with TalkBack or a keyboard meant starting
+again from the top of the page after every tap.
+
+**Files:** `src/app.js` (`goMonth`, new `monthChanged`, month title focusable), `src/index.html` (`#live` region),
+`src/styles.css` (`.sr-only`, title focus outline), `DEVLOG.md`, `ROADMAP.md`. No new strings: the month title is
+already localized. `src/logic.js` is untouched.
+
+**Checks:**
+- `npm ci`: ok
+- `npm test`: ok
+- `npm run build`: ok
+- `npm run sync`: ok
+- Browser check with Playwright on `www/index.html`, Pixel 7 emulation (Italian light, English dark): after "next
+  month" focus stays on the button and the live region reads "dicembre 2026" / "December 2026"; after "Today" focus is
+  on the month title, the live region reads the current month and Tab moves on to "previous month"; no horizontal
+  overflow, no page or console errors.
+- `./gradlew assembleDebug`: not run, the Android SDK is not available in this environment (Java is).
+
 ## 2026-11-22 — Overlap hint on the Today screen
 
 **What:** when some recorded packs overlap another one (starts less than 24 days apart, the same packs History flags),
