@@ -2,6 +2,32 @@
 
 Newest entries first.
 
+## 2026-11-24 — Translated nav label and focus in the Backup sheet's confirmations
+
+**What:** the bottom navigation's accessible name was hard-coded as "Sezioni"; it now follows the app language
+("Sezioni" / "Sections"). In the Backup sheet, the inline confirmations ("Delete the copy?", "Replace the current
+data?") used to hide the focused button, leaving keyboard and TalkBack users nowhere. Now focus moves to "Cancel" when
+the question appears (the question is read as its description through `aria-describedby`), goes back to "Delete" /
+"Import" when cancelled, and after deleting the unreadable copy it moves to the "Restore" heading (or the sheet title
+if that heading is not shown).
+
+**Why:** first and third items of the roadmap (accessibility pass, focus after deleting the unreadable copy).
+
+**Files:** `src/app.js` (`applyLang` sets the nav label, new `swapConfirm`, focus after `unreadableYes`, ids and
+`tabindex="-1"` on the sheet headings), `src/i18n.js` (`sections` in Italian and English), `src/styles.css` (no focus
+ring on programmatically focused headings), `DEVLOG.md`, `ROADMAP.md`. `src/logic.js` is untouched.
+
+**Checks:**
+- `npm ci`: ok
+- `npm test`: ok
+- `npm run build`: ok
+- `npm run sync`: ok
+- Browser check with Playwright on `www/index.html`, Pixel 7 emulation (Italian light, English dark), with an
+  unreadable copy saved: nav label "Sezioni" / "Sections"; Delete → focus on Cancel described by the question;
+  Cancel → focus back on Delete; confirming the delete → focus on "Restore"; Import → Cancel → Import the same way;
+  no horizontal overflow, no page or console errors.
+- `./gradlew assembleDebug`: not run, the Android SDK is not available in this environment (Java is).
+
 ## 2026-11-23 — Keep focus and announce the month when changing month
 
 **What:** on the Calendar, the previous/next month buttons used to lose keyboard and TalkBack focus, because the

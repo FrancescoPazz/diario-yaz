@@ -4,6 +4,7 @@ import { DAY, KIND } from './logic.js';
 
 const TEXT = {
   it: {
+    sections: 'Sezioni',
     tabs: { oggi: 'Oggi', calendario: 'Calendario', storico: 'Storico', impostazioni: 'Impostazioni' },
     dayOf: (d, start) => `Giorno ${d} del blister iniziato ${start}`,
 
@@ -182,6 +183,7 @@ const TEXT = {
   },
 
   en: {
+    sections: 'Sections',
     tabs: { oggi: 'Today', calendario: 'Calendar', storico: 'History', impostazioni: 'Settings' },
     dayOf: (d, start) => `Day ${d} of the pack started on ${start}`,
 

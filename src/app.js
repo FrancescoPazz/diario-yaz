@@ -85,6 +85,7 @@ function dropUndo() {
 function applyLang() {
   T = strings(pickLang(state.settings.lang, navigator.language));
   document.documentElement.lang = T.lang;
+  $('nav').setAttribute('aria-label', T.sections);
   buildNav();
 }
 
@@ -278,21 +279,31 @@ const actions = {
     catch (e) { ta.focus(); ta.select(); el.textContent = T.copyManual; }
   },
   importAsk() {
-    try { parseBackup($('backup-in').value); $('imp-ask').hidden = true; $('imp-confirm').hidden = false; }
+    try { parseBackup($('backup-in').value); swapConfirm('imp', true); }
     catch (e) { showErr(T.backupErr[e.message] || T.backupErr.json); }
   },
-  unreadableAsk() { $('unr-ask').hidden = true; $('unr-confirm').hidden = false; },
-  unreadableNo() { $('unr-ask').hidden = false; $('unr-confirm').hidden = true; },
+  unreadableAsk() { swapConfirm('unr', true); },
+  unreadableNo() { swapConfirm('unr', false); },
   async unreadableYes() {
-    try { await Preferences.remove({ key: UNREADABLE_KEY }); unreadable = null; render(); }   // the section disappears from the open sheet
-    catch (e) { showErr(T.err.save); }
+    try {
+      await Preferences.remove({ key: UNREADABLE_KEY }); unreadable = null; render();   // the section disappears from the open sheet
+      ($('restore-t') || $('dlg-t')).focus();   // the focused button is gone: go on to the next heading
+    } catch (e) { showErr(T.err.save); }
   },
-  importNo() { $('imp-ask').hidden = false; $('imp-confirm').hidden = true; },
+  importNo() { swapConfirm('imp', false); },
   importYes() {
     try { state = parseBackup($('backup-in').value); ui.dialog = null; applyLang(); registerNotificationTexts(); persist(); toast(T.imported); }
     catch (e) { showErr(T.backupErr[e.message] || T.backupErr.json); }
   },
 };
+// Inline confirmations in the Backup sheet swap the action row for a question row. The focused button is hidden by
+// the swap, so focus follows it: to "Cancel" when the question appears (the question is its description), back to
+// the action that asked when it is dismissed.
+function swapConfirm(id, ask) {
+  $(id + '-ask').hidden = ask; $(id + '-confirm').hidden = !ask;
+  const to = ask ? $(id + '-confirm').querySelector('button') : $(id + '-ask').querySelector('button:last-child');
+  if (to) to.focus();
+}
 function goMonth(k, from) { ui.month = shiftMonth(ui.month, k); ui.calDay = null; calSlide = k > 0 ? 'next' : 'prev'; render(); monthChanged(from); }
 // After a month change the calendar is rebuilt: the new month is announced to screen readers and, when a button
 // was used, focus goes back to that button (or to the month title if the button is gone, like "Today").
@@ -623,15 +634,15 @@ function dialogView() {
       <p class="body-m muted">${T.unreadableWhy}</p>
       <textarea id="unreadable-out" class="input" readonly aria-label="${T.unreadableTitle}">${esc(unreadable)}</textarea>
       <div class="row" id="unr-ask"><button class="btn tonal" data-a="copyBackup" data-src="unreadable-out">${icon('contentCopy')}${T.copy}</button><button class="btn text" data-a="unreadableAsk">${T.delete}</button></div>
-      <div class="row" id="unr-confirm" hidden><span class="body-m grow">${T.unreadableQ}</span><button class="btn text" data-a="unreadableNo">${T.cancel}</button><button class="btn filled" data-a="unreadableYes">${T.delete}</button></div>
+      <div class="row" id="unr-confirm" hidden><span class="body-m grow" id="unr-q">${T.unreadableQ}</span><button class="btn text" data-a="unreadableNo" aria-describedby="unr-q">${T.cancel}</button><button class="btn filled" data-a="unreadableYes">${T.delete}</button></div>
 ` : '';
     return `<dialog id="dlg" class="sheet" aria-labelledby="dlg-t"><div><div class="handle"></div><div class="dlg-body">
-      <h2 id="dlg-t" class="headline-s">${T.backup}</h2>${out}${lost}${out || lost ? `<h3 class="title-m">${T.restore}</h3>` : ''}
+      <h2 id="dlg-t" class="headline-s" tabindex="-1">${T.backup}</h2>${out}${lost}${out || lost ? `<h3 id="restore-t" class="title-m" tabindex="-1">${T.restore}</h3>` : ''}
       <p class="body-m muted">${T.restoreWhy}</p>
       <textarea id="backup-in" class="input" aria-label="${T.pasteAria}" placeholder='{"blisters":[...]}'></textarea>
       <p class="dlg-err" hidden></p>
       <div class="row" id="imp-ask"><button class="btn outlined" data-a="importAsk">${icon('contentPaste')}${T.import}</button></div>
-      <div class="row" id="imp-confirm" hidden><span class="body-m grow">${T.replaceQ}</span><button class="btn text" data-a="importNo">${T.cancel}</button><button class="btn filled" data-a="importYes">${T.replace}</button></div>
+      <div class="row" id="imp-confirm" hidden><span class="body-m grow" id="imp-q">${T.replaceQ}</span><button class="btn text" data-a="importNo" aria-describedby="imp-q">${T.cancel}</button><button class="btn filled" data-a="importYes">${T.replace}</button></div>
       <div class="actions-end"><button class="btn text" data-a="closeDialog">${T.close}</button></div>
     </div></div></dialog>`;
   }
