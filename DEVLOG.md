@@ -2,6 +2,34 @@
 
 Newest entries first.
 
+## 2026-11-25 — Focus goes back where it was when a sheet closes or a pack is deleted
+
+**What:** the screen is rebuilt on every change, so after closing a sheet (Cancel, Esc/back, tap outside) or saving
+it, keyboard and TalkBack focus fell back to the top of the page. Now the button that opened the sheet is found again
+by its action and pack date (`ui.opener`) and gets focus back: "Add", the row's Edit or Delete, Backup's "Open" or
+"I have a backup to restore". After editing a pack, focus follows it to its new date. After deleting a pack, focus
+moves to the Delete button of the row that takes its place (the next older pack, or the newer one if the oldest was
+deleted); if no pack is left, to the first-pack date field of the setup screen. "Undo" in the snackbar puts focus back
+on the restored pack's Delete button.
+
+**Why:** sixth item of the roadmap (focus after deleting a pack), extended to every sheet since the cause is the same.
+
+**Files:** `src/app.js` (new `btnSel`, `refocus`; `openDialog` remembers the opener; `closeDialog`, `addSave`,
+`delYes`, `undoDel`, `importYes` and the Esc `close` listener restore focus), `DEVLOG.md`, `ROADMAP.md`. No new
+strings. `src/logic.js` is untouched.
+
+**Checks:**
+- `npm ci`: ok (0 vulnerabilities)
+- `npm test`: ok
+- `npm run build`: ok
+- `npm run sync`: ok
+- Browser check with Playwright on `www/index.html`, Pixel 7 emulation (Italian light, English dark), four packs:
+  Cancel and Esc return focus to the opening Delete/Edit button; deleting a middle pack focuses the next older row's
+  Delete, the oldest one focuses the newer row; Undo focuses the restored pack; an edit from 4 to 5 Sept focuses the
+  Edit button on 5 Sept; deleting the last pack focuses the setup date field; Backup's Close returns to "Open";
+  no horizontal overflow, no page or console errors.
+- `./gradlew assembleDebug`: not run, the Android SDK is not available in this environment (Java is).
+
 ## 2026-11-24 — Translated nav label and focus in the Backup sheet's confirmations
 
 **What:** the bottom navigation's accessible name was hard-coded as "Sezioni"; it now follows the app language

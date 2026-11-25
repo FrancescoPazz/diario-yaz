@@ -53,7 +53,7 @@ const TABS = [['oggi', 'today'], ['calendario', 'calendarMonth'], ['storico', 'h
 
 let state = null;
 let T = strings(pickLang('auto', navigator.language));
-let ui = { tab: 'oggi', month: null, calDay: null, pickDate: false, dialog: null, delStart: null, editStart: null };
+let ui = { tab: 'oggi', month: null, calDay: null, pickDate: false, dialog: null, opener: null, delStart: null, editStart: null };
 let shownTab = null;
 let unreadable = null;   // kept raw text of saved data the app could not read, shown in the Backup sheet
 let calSlide = null;   // 'next' | 'prev': direction of the month change to animate on the next render
@@ -202,8 +202,14 @@ function answer(kind, date) {
   next.settings = state.settings; state = next; ui.pickDate = false; persist(); toast(T.answered[kind]);
 }
 function setTab(tab) { ui.tab = tab; render(); window.scrollTo(0, 0); }
-function openDialog(name) { ui.dialog = name; render(); }
-function closeDialog() { ui.dialog = null; render(); }
+// The screen is rebuilt on every change, so the button that opened a sheet is a new element once the sheet closes.
+// It is found again by its action (and pack date), so keyboard and TalkBack focus goes back where it was.
+const btnSel = (a, start) => `[data-a="${a}"]` + (start ? `[data-start="${start}"]` : '');
+function refocus(...sels) {
+  for (const s of sels) { const t = s && document.querySelector(s); if (t) return t.focus(); }
+}
+function openDialog(name, from) { ui.dialog = name; ui.opener = from ? btnSel(from.dataset.a, from.dataset.start) : null; render(); }
+function closeDialog() { ui.dialog = null; render(); refocus(ui.opener); }
 
 const actions = {
   tab(el) { setTab(el.dataset.tab); },
@@ -231,9 +237,9 @@ const actions = {
   monthToday() { ui.month = null; ui.calDay = null; render(); monthChanged('monthToday'); },
   calDay(el) { ui.calDay = Number(el.dataset.n); render(); },
   closeDialog,
-  addOpen() { ui.editStart = null; openDialog('add'); },
+  addOpen(el) { ui.editStart = null; openDialog('add', el); },
   // The same sheet adds a new pack or, with ui.editStart set, changes the start date and placebo outcome of a recorded one.
-  edit(el) { ui.editStart = el.dataset.start; openDialog('add'); },
+  edit(el) { ui.editStart = el.dataset.start; openDialog('add', el); },
   addSave() {
     const v = $('add-date').value, o = document.querySelector('[name=add-out]:checked').value;
     if (!v) return showErr(T.err.addDate);
@@ -243,20 +249,25 @@ const actions = {
     if (ui.editStart) state.blisters = state.blisters.map(b => (b.start === ui.editStart ? pack : b));
     else state.blisters.push(pack);
     const edited = ui.editStart; ui.dialog = null; ui.editStart = null; persist();
-    if (edited) toast(T.edited);
+    // An edited pack may have moved in the list: focus follows it to its new date.
+    if (edited) { refocus(btnSel('edit', v), ui.opener); toast(T.edited); } else refocus(ui.opener);
   },
-  del(el) { ui.delStart = el.dataset.start; openDialog('del'); },
+  del(el) { ui.delStart = el.dataset.start; openDialog('del', el); },
   delYes() {
     const before = state.blisters.map(b => ({ ...b }));
+    // The deleted row's button is gone: focus moves to the row that takes its place (the next older pack),
+    // or the newer one if it was the oldest (the first-pack date field when none is left).
+    const starts = before.map(b => b.start).sort(), i = starts.indexOf(ui.delStart);
+    const near = starts[i - 1] || starts[i + 1];
     state.blisters = state.blisters.filter(b => b.start !== ui.delStart); ui.dialog = null;
     const l = lastB(); if (l && l.placebo === false) l.placebo = null;
-    persist();
+    persist(); refocus(near ? btnSel('del', near) : '#setup-date');
     undo = before; toast(T.deleted, { label: T.undo, a: 'undoDel' });
   },
   undoDel() {
     if (!undo) return;
     const before = undo; $('snackbar').hidden = true; clearTimeout(toastTimer);
-    state.blisters = before; persist(); toast(T.restored);
+    state.blisters = before; persist(); refocus(btnSel('del', ui.delStart)); toast(T.restored);   // the snackbar button is gone
   },
   rxShift() { state.settings.rx = shiftRx(state, compute(state, d2n(localToday()))); persist(); },
   notifOn() { askPermission(); },
@@ -271,7 +282,7 @@ const actions = {
       toast(T.testIn5);
     } catch (e) { showErr(T.err.test); }
   },
-  backupOpen() { openDialog('backup'); },
+  backupOpen(el) { openDialog('backup', el); },
   // Dentro la finestra la snackbar non si vedrebbe: la conferma va sul pulsante stesso.
   async copyBackup(el) {
     const ta = $(el.dataset.src || 'backup-out');
@@ -292,7 +303,7 @@ const actions = {
   },
   importNo() { swapConfirm('imp', false); },
   importYes() {
-    try { state = parseBackup($('backup-in').value); ui.dialog = null; applyLang(); registerNotificationTexts(); persist(); toast(T.imported); }
+    try { state = parseBackup($('backup-in').value); ui.dialog = null; applyLang(); registerNotificationTexts(); persist(); refocus(ui.opener); toast(T.imported); }
     catch (e) { showErr(T.backupErr[e.message] || T.backupErr.json); }
   },
 };
@@ -348,7 +359,7 @@ document.addEventListener('touchend', e => {
   if (dt < 800 && Math.abs(dx) >= 48 && Math.abs(dx) > Math.abs(dy) * 1.5) goMonth(dx < 0 ? 1 : -1);
 }, { passive: true });
 document.addEventListener('touchcancel', () => { swipe = null; }, { passive: true });
-document.addEventListener('close', e => { if (e.target.id === 'dlg') ui.dialog = null; }, true);   // chiusa con Esc
+document.addEventListener('close', e => { if (e.target.id === 'dlg' && ui.dialog) { ui.dialog = null; refocus(ui.opener); } }, true);   // chiusa con Esc
 
 /* ---------- interfaccia ---------- */
 function render() {

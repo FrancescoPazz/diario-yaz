@@ -11,5 +11,5 @@ Ideas for the next changes, most useful first. Each one should be a small, revie
    (gap days, skipped period marker on a gap day).
 5. **Scroll to the first flagged pack** — when History is opened from the Today overlap hint, scroll to and focus the
    first overlapping row.
-6. **Focus after deleting a pack** — after "Delete" in History, move focus to the next row (or the FAB) instead of the
-   top of the page.
+6. **Update check for dependencies** — review Capacitor 8 patch releases and esbuild, and update them if the build and
+   tests stay green.
