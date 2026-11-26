@@ -11,5 +11,5 @@ Ideas for the next changes, most useful first. Each one should be a small, revie
    (gap days, skipped period marker on a gap day).
 5. **Scroll to the first flagged pack** — when History is opened from the Today overlap hint, scroll to and focus the
    first overlapping row.
-6. **Update check for dependencies** — review Capacitor 8 patch releases and esbuild, and update them if the build and
-   tests stay green.
+6. **Calendar legend in dark mode** — review the legend and the day-detail sheet in dark mode for contrast and
+   spacing on small screens.

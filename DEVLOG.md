@@ -2,6 +2,25 @@
 
 Newest entries first.
 
+## 2026-11-26 — Update Capacitor to 8.6.3
+
+**What:** updated `@capacitor/core`, `@capacitor/android` and `@capacitor/cli` from 8.6.2 to 8.6.3 (patch release,
+pinned exact versions as before). The plugins (`app` 8.1.2, `local-notifications` 8.3.1, `preferences` 8.0.1),
+esbuild 0.28.2 and the other dev dependencies are already on their latest versions. No code changes were needed.
+
+**Why:** sixth item of the roadmap (dependency update check), and a change of kind after several accessibility days.
+
+**Files:** `package.json`, `package-lock.json`, `DEVLOG.md`, `ROADMAP.md`. `src/logic.js` is untouched.
+
+**Checks:**
+- `npm ci`: ok (0 vulnerabilities)
+- `npm outdated`: nothing left to update
+- `npm test`: ok
+- `npm run build` / `npm run sync`: ok
+- Smoke check with Playwright on `www/index.html`, Pixel 7 emulation, light and dark: setup screen renders, no page
+  or console errors.
+- `./gradlew assembleDebug`: not run, the Android SDK is not available in this environment (Java is).
+
 ## 2026-11-25 — Focus goes back where it was when a sheet closes or a pack is deleted
 
 **What:** the screen is rebuilt on every change, so after closing a sheet (Cancel, Esc/back, tap outside) or saving
