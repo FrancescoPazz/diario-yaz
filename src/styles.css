@@ -204,6 +204,7 @@ h1, h2, h3, p { margin: 0; }
 .hero-row .wait { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; flex: none; background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
 .hero-row .wait .i { width: 32px; height: 32px; }
 .blister { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; max-width: 420px; }
+.pack-count { margin: -8px 0 0; }
 .pill {
   aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center; position: relative;
   font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums;

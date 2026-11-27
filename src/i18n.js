@@ -51,6 +51,7 @@ const TEXT = {
     packWas: d => `Il nuovo blister era previsto ${d}.`,
     packToday: 'Oggi inizia il nuovo blister.',
     packAria: d => `Blister attuale: 24 compresse attive e 4 placebo, oggi giorno ${d}`,
+    packCount: (n, since) => n === 1 ? 'Primo blister nel diario' : `Blister n. ${n} nel diario, dal ${since}`,
 
     upcoming: 'Prossime date',
     expectedPeriod: 'Ciclo previsto',
@@ -230,6 +231,7 @@ const TEXT = {
     packWas: d => `The new pack was due on ${d}.`,
     packToday: 'The new pack starts today.',
     packAria: d => `Current pack: 24 active pills and 4 placebos, today is day ${d}`,
+    packCount: (n, since) => n === 1 ? 'First pack in your diary' : `Pack ${n} in your diary, since ${since}`,
 
     upcoming: 'Upcoming dates',
     expectedPeriod: 'Expected period',

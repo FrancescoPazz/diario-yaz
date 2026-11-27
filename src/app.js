@@ -484,6 +484,7 @@ function todayView(m) {
   return `<section class="card hero">
     <div class="hero-row">${big}<div><h2 class="title-l">${title}</h2><p class="body-m muted">${sub}</p></div></div>
     <div class="blister" role="img" aria-label="${T.packAria(Math.max(day, 1))}">${pills}</div>
+    <p class="body-s muted pack-count">${T.packCount(m.B.length, T.fmtFull(m.B[0].s))}</p>
   </section>`;
 }
 

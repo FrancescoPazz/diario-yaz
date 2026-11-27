@@ -2,6 +2,28 @@
 
 Newest entries first.
 
+## 2026-11-27 — Pack count on the Today screen
+
+**What:** the pack card on Today now ends with a short line saying how many packs are recorded and since when, e.g.
+"Blister n. 3 nel diario, dal 7 settembre 2026" / "Pack 3 in your diary, since 7 September 2026" ("Primo blister nel
+diario" / "First pack in your diary" when there is only one). It uses the packs already loaded by `compute`, so it
+also reflects restores and deletions right away.
+
+**Why:** second item of the roadmap; it gives a sense of progress and makes a missing or extra pack noticeable
+without opening History. A feature day after a dependency update and several accessibility days.
+
+**Files:** `src/app.js` (`todayView`), `src/i18n.js` (new `packCount` in both languages), `src/styles.css`
+(`.pack-count`), `DEVLOG.md`, `ROADMAP.md`. `src/logic.js` is untouched.
+
+**Checks:**
+- `npm ci`: ok
+- `npm test`: ok (includes the i18n key parity check)
+- `npm run build` / `npm run sync`: ok
+- Playwright on `www/index.html`, Pixel 7 emulation: Italian light with three packs shows "Blister n. 3 nel diario,
+  dal 7 settembre 2026"; English dark with one pack shows "First pack in your diary"; no horizontal overflow, no page
+  or console errors.
+- `./gradlew assembleDebug`: not run, the Android SDK is not available in this environment (Java is).
+
 ## 2026-11-26 — Update Capacitor to 8.6.3
 
 **What:** updated `@capacitor/core`, `@capacitor/android` and `@capacitor/cli` from 8.6.2 to 8.6.3 (patch release,
