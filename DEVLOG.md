@@ -2,6 +2,33 @@
 
 Newest entries first.
 
+## 2026-11-28 — Skipped period marker kept on the expected next pack
+
+**What:** fixed a calendar bug and added tests around skipped placebos. When the latest pack is recorded with the
+placebo skipped (through Add or Edit) and the next pack is not recorded yet, its period day (day 28) falls on the
+expected next pack, which `buildMap` drew after the skipped-period markers and so overwrote them: the calendar lost the
+"period skipped" dot even though the periods list still showed it, and the dot only came back once the next pack was
+recorded. The skipped-period markers are now applied after the projected packs, so they merge with that day's
+information as they already did for recorded packs. New tests cover a skipped pack followed by a late pack (gap days
+counted from the day after day 24, the skipped marker on a gap day keeping its gap data), the latest pack skipped with
+the next one still expected (the failing case: fails before the fix, passes after), and the same pack five days late.
+
+**Why:** first item of the roadmap (tests for the calendar map around a skipped placebo); writing them exposed the bug.
+A test and bug-fix day after a feature day.
+
+**Files:** `src/logic.js` (`buildMap`: order of the skipped-period loop, no change to any date calculation),
+`scripts/test-logic.mjs`, `DEVLOG.md`, `ROADMAP.md`. No new strings.
+
+**Checks:**
+- `npm ci`: ok
+- `npm test`: the new projected-pack assertion failed before the fix; all tests pass after it
+- `npm run build` / `npm run sync`: ok
+- Playwright on `www/index.html`, Pixel 7 emulation, clock set to 1 Nov 2026, one pack from 12 Oct with the placebo
+  skipped: 8 Nov now shows the "period skipped" marker on the expected pack ("attiva 4, ciclo saltato questo mese" /
+  "active pill 4, period skipped this month") in Italian light and English dark; no horizontal overflow, no page or
+  console errors.
+- `./gradlew assembleDebug`: not run, the Android SDK is not available in this environment (Java is).
+
 ## 2026-11-27 — Pack count on the Today screen
 
 **What:** the pack card on Today now ends with a short line saying how many packs are recorded and since when, e.g.

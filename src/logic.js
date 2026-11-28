@@ -67,16 +67,17 @@ export function buildMap(m) {
     const gapEnd = next !== null ? next : m.nextStart;
     for (let d = end; d < gapEnd; d++) map.set(d, { kind: 'gap', late: d - end + 1, proj: d > m.t });
   });
-  m.B.forEach(b => {
-    if (b.p !== false) return;
-    const n = b.s + 27, info = map.get(n) || { kind: 'gap', proj: n > m.t };
-    map.set(n, { ...info, skippedPeriod: true });
-  });
   m.proj.forEach(b => {
     for (let d = b.s; d < b.s + LENGTH; d++) {
       const day = d - b.s + 1;
       map.set(d, { day, kind: day <= ACTIVE ? 'active' : 'placebo', start: day === 1, period: day === 28, proj: true });
     }
+  });
+  // After the projected packs, so a skipped period on the expected next pack keeps its marker.
+  m.B.forEach(b => {
+    if (b.p !== false) return;
+    const n = b.s + 27, info = map.get(n) || { kind: 'gap', proj: n > m.t };
+    map.set(n, { ...info, skippedPeriod: true });
   });
   return map;
 }

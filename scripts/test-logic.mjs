@@ -112,6 +112,30 @@ map = buildMap(at(skipped, '2026-11-05'));
 assert.ok(day(map, '2026-11-04').skipend);
 assert.equal(day(map, '2026-11-04').day, 24);
 assert.equal(day(map, '2026-11-05').day, 1);
+// Skipped placebo followed by a late pack: gap days are counted from the day after day 24, and the skipped period
+// marker sits on its gap day without losing the gap information.
+const skipLate = { ...base, blisters: [{ start: '2026-10-12', placebo: false }, { start: '2026-11-10', placebo: null }] };
+map = buildMap(at(skipLate, '2026-11-20'));
+assert.ok(day(map, '2026-11-04').skipend);
+assert.deepEqual(day(map, '2026-11-05'), { kind: 'gap', late: 1, proj: false });
+assert.deepEqual(day(map, '2026-11-08'), { kind: 'gap', late: 4, proj: false, skippedPeriod: true });
+assert.deepEqual(day(map, '2026-11-09'), { kind: 'gap', late: 5, proj: false });
+assert.deepEqual([day(map, '2026-11-10').day, day(map, '2026-11-10').start], [1, true]);
+// The latest pack recorded with a skipped placebo and no newer pack yet: the skipped period is still marked when it
+// falls on the expected (projected) next pack, as it is once that pack is recorded.
+const skipLast = { ...base, blisters: [{ start: '2026-10-12', placebo: false }] };
+m = at(skipLast, '2026-11-01');
+assert.ok(m.periods.some(p => p.skipped && n2d(p.n) === '2026-11-08'));
+map = buildMap(m);
+assert.ok(day(map, '2026-11-04').skipend);
+assert.ok(day(map, '2026-11-05').start && day(map, '2026-11-05').proj);
+assert.deepEqual(day(map, '2026-11-08'), { day: 4, kind: 'active', start: false, period: false, proj: true, skippedPeriod: true });
+assert.ok(!day(map, '2026-12-02').skippedPeriod && day(map, '2026-12-02').period);
+map = buildMap(at({ ...skipLast, blisters: [...skipLast.blisters, { start: '2026-11-05', placebo: null }] }, '2026-11-05'));
+assert.ok(day(map, '2026-11-08').skippedPeriod);
+map = buildMap(at(skipLast, '2026-11-10'));                   // five days late, no new pack yet
+assert.deepEqual(day(map, '2026-11-08'), { kind: 'gap', late: 4, proj: false, skippedPeriod: true });
+assert.ok(day(map, '2026-11-10').start && day(map, '2026-11-10').proj);
 
 // Reminders stay between today and the horizon; after "No" the new-pack question moves from today to tomorrow
 // and keeps pointing at the original expected day.
